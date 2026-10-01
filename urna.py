@@ -4,7 +4,7 @@ driven entirely from Python running in Pyodide. Mirrors the design mockup's
 state machine: digit entry -> candidate lookup / null vote / blank vote -> confirm -> fim.
 """
 from js import document, window
-from pyodide.ffi import create_proxy
+from pyodide.ffi import create_proxy, to_js
 
 CANDS = {
     '37': {'num': '37', 'nome': 'Helena Duarte Ramos', 'partido': 'PRV', 'vice': 'Otávio Lins Barreto',
@@ -98,10 +98,19 @@ class Urna:
         # locked until a urna-liberar event arrives for this voter.
         self.liberada = not vinculada
 
+        # Módulo Impressor: the real printer is built into the voter
+        # terminal's own cabinet (not the mesário terminal), so it renders
+        # here. Each entry is one cut, printed receipt (zerésima/resumo/BU/
+        # BUJ/BIM), newest on top, mirroring the real auto-cutter producing
+        # a separate strip per document rather than one continuous roll.
+        self.recibos = []
+
         self._ac = None
         self._kd_proxy = None
         self._click_proxy = None
         self._liberar_proxy = None
+        self._print_zeresima_proxy = None
+        self._print_bu_proxy = None
 
         if self.teclas:
             self._kd_proxy = create_proxy(self._on_keydown)
@@ -113,6 +122,11 @@ class Urna:
         if self.vinculada:
             self._liberar_proxy = create_proxy(self._on_liberar)
             window.addEventListener('urna-liberar', self._liberar_proxy)
+
+        self._print_zeresima_proxy = create_proxy(self._on_print_zeresima)
+        window.addEventListener('urna-print-zeresima', self._print_zeresima_proxy)
+        self._print_bu_proxy = create_proxy(self._on_print_bu)
+        window.addEventListener('urna-print-bu', self._print_bu_proxy)
 
         self.render()
 
@@ -126,12 +140,31 @@ class Urna:
         if self._liberar_proxy:
             window.removeEventListener('urna-liberar', self._liberar_proxy)
             self._liberar_proxy.destroy()
+        if self._print_zeresima_proxy:
+            window.removeEventListener('urna-print-zeresima', self._print_zeresima_proxy)
+            self._print_zeresima_proxy.destroy()
+        if self._print_bu_proxy:
+            window.removeEventListener('urna-print-bu', self._print_bu_proxy)
+            self._print_bu_proxy.destroy()
 
     def _on_liberar(self, e):
         self.num = ''
         self.branco = False
         self.fim = False
         self.liberada = True
+        self.render()
+
+    def _on_print_zeresima(self, e):
+        detail = e.detail.to_py() if hasattr(e.detail, 'to_py') else dict(e.detail)
+        self.recibos.insert(0, {'tipo': 'ZERÉSIMA', 'linhas': detail['zeresima']})
+        self.recibos.insert(0, {'tipo': 'RESUMO DA ZERÉSIMA', 'linhas': detail['resumo']})
+        self.render()
+
+    def _on_print_bu(self, e):
+        detail = e.detail.to_py() if hasattr(e.detail, 'to_py') else dict(e.detail)
+        self.recibos.insert(0, {'tipo': 'BIM — BOLETIM DE IDENTIFICAÇÃO DA MÍDIA', 'linhas': detail['bim']})
+        self.recibos.insert(0, {'tipo': 'BUJ — BOLETIM DE URNA DA JUSTIFICATIVA', 'linhas': detail['buj']})
+        self.recibos.insert(0, {'tipo': 'BOLETIM DE URNA', 'linhas': detail['bu']})
         self.render()
 
     # ---- audio ----
@@ -221,7 +254,9 @@ class Urna:
             self.fim = True
             if self.vinculada:
                 self.liberada = False
-                window.dispatchEvent(window.Event.new('urna-fim'))
+                resultado = 'branco' if self.branco else (self.num if self.num in CANDS else 'nulo')
+                detail = to_js({'detail': {'resultado': resultado}}, dict_converter=window.Object.fromEntries)
+                window.dispatchEvent(window.CustomEvent.new('urna-fim', detail))
         self.render()
 
     def reset(self):
@@ -229,6 +264,33 @@ class Urna:
         self.branco = False
         self.fim = False
         self.render()
+
+    # ---- módulo impressor ----
+    def _render_printer(self):
+        """Thermal printer (Módulo Impressor) built into the voter terminal's
+        own cabinet: direct-thermal, 57mm paper, auto-cutter — each printed
+        document comes out as its own cut strip, newest on top of the tray."""
+        if not self.recibos:
+            return (
+                '<div class="printer">'
+                '<div class="printer-slot"></div>'
+                '<span class="printer-label">Módulo Impressor</span>'
+                '</div>'
+            )
+        strips_html = ''.join(
+            '<div class="recibo">'
+            f'<div class="recibo-tipo">{esc(r["tipo"])}</div>'
+            + ''.join(f'<div class="recibo-linha">{esc(linha)}</div>' for linha in r['linhas'])
+            + '</div>'
+            for r in self.recibos
+        )
+        return (
+            '<div class="printer printer-active">'
+            '<div class="printer-slot"></div>'
+            '<span class="printer-label">Módulo Impressor</span>'
+            f'<div class="printer-tray">{strips_html}</div>'
+            '</div>'
+        )
 
     # ---- render ----
     def render(self):
@@ -410,8 +472,10 @@ class Urna:
                 '</div>'
             )
 
+        printer_html = self._render_printer()
+
         shell_class = 'shell' if self.teclado else 'shell no-keyboard'
-        shell_html = f'<div class="{shell_class}">{screen_html}{keyboard_html}</div>'
+        shell_html = f'<div class="{shell_class}">{printer_html}{screen_html}{keyboard_html}</div>'
 
         below_html = ''
         if self.teclado:

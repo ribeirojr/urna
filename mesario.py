@@ -7,7 +7,12 @@ confirmation) -> libera o voto -> aguarda o fim do voto na urna (via window
 events 'urna-liberar' / 'urna-fim') -> concluído.
 """
 from js import document, window
-from pyodide.ffi import create_proxy
+from pyodide.ffi import create_proxy, to_js
+
+
+def dispatch(name, detail):
+    js_detail = to_js({'detail': detail}, dict_converter=window.Object.fromEntries)
+    window.dispatchEvent(window.CustomEvent.new(name, js_detail))
 
 ELEITOR = {'nome': 'Ana Beatriz Moura', 'titulo': '0123 4567 8901', 'ano': '1987'}
 
@@ -40,10 +45,18 @@ class Mesario:
         self.root = root
         self.teclado = teclado
 
-        self.fase = 'zeresima'  # zeresima -> ident -> bio -> ano (fallback) -> votando -> concluido
+        self.fase = 'zeresima'  # zeresima -> ident -> bio -> ano (fallback) -> votando -> concluido/encerrada
         self.campo = ''
         self.tentativa = 0
         self.zeresima_impressa = False
+        self.urna_encerrada = False
+        # Running section tally, fed by each voter's urna-fim result — the
+        # real BU reports these totals once at close of polls (17h), not
+        # per voter.
+        self.votos = {c['num']: 0 for c in CANDS_PRESIDENTE}
+        self.votos_branco = 0
+        self.votos_nulo = 0
+        self.comparecimento = 0
 
         self._click_proxy = create_proxy(self._on_click)
         self.root.addEventListener('click', self._click_proxy)
@@ -60,9 +73,19 @@ class Mesario:
         self._fim_proxy.destroy()
 
     def _on_urna_fim(self, e):
-        if self.fase == 'votando':
-            self.fase = 'concluido'
-            self.render()
+        if self.fase != 'votando':
+            return
+        detail = e.detail.to_py() if hasattr(e.detail, 'to_py') else dict(e.detail)
+        resultado = detail.get('resultado')
+        self.comparecimento += 1
+        if resultado == 'branco':
+            self.votos_branco += 1
+        elif resultado in self.votos:
+            self.votos[resultado] += 1
+        else:
+            self.votos_nulo += 1
+        self.fase = 'concluido'
+        self.render()
 
     def _on_click(self, e):
         target = e.target
@@ -88,9 +111,11 @@ class Mesario:
             self.falha_digital()
         elif action == 'exemplo':
             self.exemplo()
+        elif action == 'encerrar':
+            self.encerrar_votacao()
 
     def digit(self, d):
-        if self.fase == 'ident' and len(self.campo) < 12:
+        if self.fase == 'ident' and not self.urna_encerrada and len(self.campo) < 12:
             self.campo += d
         elif self.fase == 'ano' and len(self.campo) < 4:
             self.campo += d
@@ -114,14 +139,14 @@ class Mesario:
             else:
                 self.abrir_votacao()
             return
-        if self.fase == 'ident' and len(self.campo) >= 11:
+        if self.fase == 'ident' and not self.urna_encerrada and len(self.campo) >= 11:
             self.fase = 'bio'
             self.campo = ''
             self.tentativa = 0
         elif self.fase == 'ano' and len(self.campo) == 4:
             self.liberar()
             return
-        elif self.fase == 'concluido':
+        elif self.fase == 'concluido' and not self.urna_encerrada:
             self.fase = 'ident'
             self.campo = ''
             self.tentativa = 0
@@ -150,19 +175,77 @@ class Mesario:
         self.render()
 
     def exemplo(self):
-        if self.fase == 'ident':
+        if self.fase == 'ident' and not self.urna_encerrada:
             self.campo = '012345678901'
             self.render()
 
     def imprimir_zeresima(self):
         if self.fase == 'zeresima' and not self.zeresima_impressa:
             self.zeresima_impressa = True
+            dispatch('urna-print-zeresima', {
+                'zeresima': self._linhas_zeresima(),
+                'resumo': self._linhas_resumo_zeresima(),
+            })
             self.render()
 
     def abrir_votacao(self):
         if self.fase == 'zeresima' and self.zeresima_impressa:
             self.fase = 'ident'
             self.render()
+
+    def encerrar_votacao(self):
+        if self.fase not in ('ident', 'concluido') or self.urna_encerrada:
+            return
+        self.urna_encerrada = True
+        self.fase = 'ident'
+        self.campo = ''
+        dispatch('urna-print-bu', {
+            'bu': self._linhas_bu(),
+            'buj': self._linhas_buj(),
+            'bim': self._linhas_bim(),
+        })
+        self.render()
+
+    # ---- conteúdo dos recibos (Módulo Impressor) ----
+    def _linhas_zeresima(self):
+        linhas = ['Seção 0412 · Zona ZZ', 'Nenhum voto ou justificativa', 'registrado nesta urna.', '', 'PRESIDENTE DA REPÚBLICA']
+        for c in CANDS_PRESIDENTE:
+            linhas.append(f'{c["num"]} {c["nome"][:22]} 0')
+        linhas += ['Brancos 0', 'Nulos 0']
+        return linhas
+
+    def _linhas_resumo_zeresima(self):
+        return [
+            'Seção 0412 · Zona ZZ',
+            'Todos os cargos conferidos com',
+            'zero votos e zero justificativas.',
+            'Afixar em local visível.',
+        ]
+
+    def _linhas_bu(self):
+        linhas = [
+            'Seção 0412 · Zona ZZ',
+            'PRESIDENTE DA REPÚBLICA',
+            f'Comparecimento: {self.comparecimento}',
+        ]
+        for c in CANDS_PRESIDENTE:
+            linhas.append(f'{c["num"]} {c["nome"][:22]} {self.votos[c["num"]]}')
+        linhas += [f'Brancos {self.votos_branco}', f'Nulos {self.votos_nulo}']
+        return linhas
+
+    def _linhas_buj(self):
+        return [
+            'Seção 0412 · Zona ZZ',
+            'Justificativas de ausência',
+            'registradas: 0',
+        ]
+
+    def _linhas_bim(self):
+        return [
+            'Seção 0412 · Zona ZZ',
+            'Mídia de resultado identificada',
+            'e assinada digitalmente.',
+        ]
 
     def render(self):
         fase, campo, tentativa = self.fase, self.campo, self.tentativa
@@ -193,6 +276,13 @@ class Mesario:
                     '<span class="tm-hint">Relatório impresso e conferido · CONFIRMA para abrir a votação</span>'
                     '</div>'
                 )
+        elif fase == 'ident' and self.urna_encerrada:
+            body = (
+                '<div class="tm-body">'
+                '<span class="tm-label">VOTAÇÃO ENCERRADA</span>'
+                '<span class="tm-text">Boletim de Urna, BUJ e BIM impressos. Nenhum eleitor pode mais ser identificado nesta seção.</span>'
+                '</div>'
+            )
         elif fase == 'ident':
             body = (
                 '<div class="tm-body">'
@@ -297,11 +387,15 @@ class Mesario:
         shell_html = f'<div class="tm-shell">{screen_html}{keyboard_html}</div>'
 
         below_html = ''
-        if self.teclado and fase != 'zeresima':
+        if self.teclado and fase != 'zeresima' and not self.urna_encerrada:
+            encerrar_btn = ''
+            if fase in ('ident', 'concluido'):
+                encerrar_btn = f'<button type="button" class="btn btn-ghost" data-action="encerrar">Encerrar a votação ({self.comparecimento} votos)</button>'
             below_html = (
                 '<div class="below-row">'
                 '<button type="button" class="btn btn-secondary" data-action="exemplo">Preencher título de exemplo</button>'
                 '<button type="button" class="btn btn-ghost" data-action="falha-digital">Simular falha na digital</button>'
+                f'{encerrar_btn}'
                 '</div>'
             )
 
