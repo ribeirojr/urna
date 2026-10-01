@@ -156,7 +156,7 @@
         <h3>Armazenamento e criptografia na urna</h3>
         <p>Os votos ficam gravados em dois cartões de memória (um interno, um externo) com os mesmos dados, por redundância. O TSE descreve o uso de assinatura digital protegendo tanto os dados de entrada (listas de eleitores, candidatos, configuração da eleição) quanto os de saída (BU, RDV), além de hash para detectar qualquer alteração posterior a arquivos e ao próprio código-fonte.</p>
         <div class="note">
-          O TSE também cita o uso de AES-256 e fala em "mais de 30 camadas de segurança" — vale tratar esse número como uma caracterização do próprio TSE, não como uma contagem auditada por terceiros independentes, já que uma especificação criptográfica completa e revisada por pares não está publicamente disponível nas fontes consultadas.
+          O TSE descreve o sistema como protegido por "mais de 30 camadas de segurança", incluindo criptografia AES-256 aplicada aos dados gravados na urna.
         </div>
       </section>
 
@@ -165,7 +165,7 @@
         <p>Esta é uma afirmação bem documentada e repetida pelo TSE e pela imprensa técnica: a urna não tem placa de rede, Wi-Fi, Bluetooth ou antena — o hardware simplesmente não inclui esses componentes. Durante a votação, o aparelho opera isolado, sem qualquer conexão.</p>
         <p>Depois do encerramento, o arquivo de resultado (já assinado digitalmente dentro da urna) é transportado fisicamente em mídia removível até um ponto de transmissão ligado à <b>rede privativa da Justiça Eleitoral</b> — não à internet pública. Um "Sistema Transportador" envia os arquivos a um Centro de Recebimento, que confere assinatura e integridade antes de qualquer processamento.</p>
         <div class="note">
-          Específico de 2026: para locais remotos sem conectividade convencional (ilhas, aldeias indígenas, sobretudo no Amazonas e Pará), o TSE está implantando até 1.113 terminais de satélite Starlink como "Postos Avançados de Transmissão". O arquivo já sai da urna assinado digitalmente e é adicionalmente cifrado por VPN durante essa transmissão; o provedor do satélite não tem acesso ao conteúdo da apuração. Isto é uma solução operacional deste ciclo eleitoral, não uma característica permanente do sistema — ciclos anteriores usaram outros meios de conectividade remota.
+          Para as eleições de 2026, o TSE está implantando até 1.113 terminais de satélite Starlink como "Postos Avançados de Transmissão" em locais sem conectividade convencional, a maior parte no Amazonas e no Pará. A antena só é conectada depois do encerramento da votação, para enviar o Boletim de Urna já assinado digitalmente.
         </div>
       </section>
 
@@ -185,7 +185,7 @@
       </section>
 
       <div class="callout">
-        <b>Sobre alegações de fraude:</b> desde 2018, e com mais força em 2022, houve alegações públicas de fragilidade ou falta de auditabilidade do sistema eletrônico de votação, feitas sobretudo por apoiadores do ex-presidente Jair Bolsonaro. Segundo o TSE, a Justiça Eleitoral e checadores de fatos independentes, essas alegações não vieram acompanhadas de evidência técnica, e um pedido de anulação dos votos eletrônicos apresentado após a eleição de 2022 foi rejeitado pelo TSE por falta de provas. Uma investigação da Polícia Federal sobre uma tentativa de acesso não autorizado aos sistemas eleitorais, segundo o TSE, não encontrou indícios de fraude ou comprometimento da apuração. Trata-se de um tema politicamente sensível e ainda com desdobramentos judiciais em curso — o resumo acima atribui as conclusões ao TSE, à Justiça Eleitoral e a investigações oficiais, e não as apresenta como posição própria deste texto.
+        <b>Sobre alegações de fraude:</b> após as eleições de 2022, o TSE rejeitou, por falta de provas, um pedido de anulação dos votos eletrônicos apresentado por apoiadores do ex-presidente Jair Bolsonaro. Em nota sobre uma investigação da Polícia Federal a respeito de uma tentativa de acesso não autorizado aos sistemas eleitorais, o TSE afirmou que não houve indício de fraude ou de comprometimento da apuração.
       </div>
 
       <div class="sources">
