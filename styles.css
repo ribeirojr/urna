@@ -188,10 +188,15 @@ a:hover { color: var(--color-accent-200); }
    screen rather than sitting in a separate box beside it. */
 .screen-stack { position: relative; flex: none; }
 .printer-tray {
+  /* pointer-events: none — this stack can grow tall enough to visually
+     reach over whatever sits above the urna on the page (the mesário
+     panel, in the default layout), and it must never steal clicks from
+     that unrelated UI. Nothing inside a receipt is interactive, so this
+     costs nothing. */
   position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%);
   display: flex; flex-direction: column-reverse; align-items: center; gap: 3px;
-  width: 92px; max-height: 220px; overflow-y: auto; overflow-x: visible; z-index: 0;
-  padding-bottom: 6px; scrollbar-width: thin;
+  width: 92px; max-height: 220px; overflow: hidden; z-index: 0; pointer-events: none;
+  padding-bottom: 6px;
   mask-image: linear-gradient(to bottom, transparent, black 24px);
   -webkit-mask-image: linear-gradient(to bottom, transparent, black 24px);
 }
