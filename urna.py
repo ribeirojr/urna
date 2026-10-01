@@ -267,16 +267,13 @@ class Urna:
 
     # ---- módulo impressor ----
     def _render_printer(self):
-        """Thermal printer (Módulo Impressor) built into the voter terminal's
-        own cabinet: direct-thermal, 57mm paper, auto-cutter — each printed
-        document comes out as its own cut strip, newest on top of the tray."""
+        """Thermal printer (Módulo Impressor): built into the voter terminal's
+        own cabinet, behind the screen — so printed strips feed up and out
+        through a slot at the top-back of the machine, not a separate box.
+        Direct-thermal, 57mm paper, auto-cutter — each document comes out as
+        its own cut strip, newest on top."""
         if not self.recibos:
-            return (
-                '<div class="printer">'
-                '<div class="printer-slot"></div>'
-                '<span class="printer-label">Módulo Impressor</span>'
-                '</div>'
-            )
+            return ''
         strips_html = ''.join(
             '<div class="recibo">'
             f'<div class="recibo-tipo">{esc(r["tipo"])}</div>'
@@ -284,13 +281,7 @@ class Urna:
             + '</div>'
             for r in self.recibos
         )
-        return (
-            '<div class="printer printer-active">'
-            '<div class="printer-slot"></div>'
-            '<span class="printer-label">Módulo Impressor</span>'
-            f'<div class="printer-tray">{strips_html}</div>'
-            '</div>'
-        )
+        return f'<div class="printer-tray">{strips_html}</div>'
 
     # ---- render ----
     def render(self):
@@ -473,9 +464,10 @@ class Urna:
             )
 
         printer_html = self._render_printer()
+        screen_stack_html = f'<div class="screen-stack">{printer_html}{screen_html}</div>'
 
         shell_class = 'shell' if self.teclado else 'shell no-keyboard'
-        shell_html = f'<div class="{shell_class}">{printer_html}{screen_html}{keyboard_html}</div>'
+        shell_html = f'<div class="{shell_class}">{screen_stack_html}{keyboard_html}</div>'
 
         below_html = ''
         if self.teclado:

@@ -182,20 +182,25 @@ a:hover { color: var(--color-accent-200); }
 }
 .shell.no-keyboard { padding: 10px; border-radius: 12px; box-shadow: var(--shadow-sm); background: var(--color-neutral-900); }
 
-.printer {
-  width: 92px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px;
-}
-.printer-slot {
-  width: 80px; height: 10px; border-radius: 3px; background: var(--color-neutral-950, #15161c);
-  box-shadow: inset 0 2px 3px rgba(0,0,0,.6), 0 0 0 1px var(--color-neutral-700);
-}
-.printer-label {
-  font: 500 9px/1.2 var(--font-body); letter-spacing: .08em; text-transform: uppercase;
-  color: var(--color-neutral-500); text-align: center;
-}
+/* The screen cabinet and its printer (Módulo Impressor, built in behind
+   it) share one stack: the printer's paper slot sits right at the top
+   back edge of the cabinet, and printed strips feed up from behind the
+   screen rather than sitting in a separate box beside it. */
+.screen-stack { position: relative; flex: none; }
 .printer-tray {
+  position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%);
   display: flex; flex-direction: column-reverse; align-items: center; gap: 3px;
-  max-height: 380px; overflow-y: auto; width: 100%; padding-bottom: 4px;
+  width: 92px; max-height: 220px; overflow-y: auto; overflow-x: visible; z-index: 0;
+  padding-bottom: 6px; scrollbar-width: thin;
+  mask-image: linear-gradient(to bottom, transparent, black 24px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 24px);
+}
+.printer-tray::after {
+  /* the slot the paper emerges from, drawn at the base of the tray so it
+     reads as part of the cabinet rather than the first strip's edge */
+  content: ''; position: absolute; left: 50%; bottom: -2px; transform: translateX(-50%);
+  width: 84px; height: 10px; border-radius: 3px; background: var(--color-neutral-950, #15161c);
+  box-shadow: inset 0 2px 3px rgba(0,0,0,.6), 0 0 0 1px var(--color-neutral-700);
 }
 .recibo {
   width: 78px; background: #f4f1e8; color: #1a1a1a; font: 9px/1.35 ui-monospace, Menlo, monospace;
@@ -209,7 +214,7 @@ a:hover { color: var(--color-accent-200); }
 .recibo-linha { white-space: pre-wrap; word-break: break-word; }
 
 .screen {
-  width: 640px; height: 440px; position: relative; display: flex; flex-direction: column;
+  width: 640px; height: 440px; position: relative; z-index: 1; display: flex; flex-direction: column;
   background: var(--s-bg); color: var(--s-ink);
   font-family: 'Atkinson Hyperlegible', system-ui, sans-serif;
   border-radius: 4px; overflow: hidden; box-shadow: 0 0 0 6px var(--color-bg); flex: none;
