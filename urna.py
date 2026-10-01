@@ -5,20 +5,15 @@ state machine: digit entry -> candidate lookup / null vote / blank vote -> confi
 """
 from js import document, window
 from pyodide.ffi import create_proxy
-from urllib.parse import quote
 
 CANDS = {
     '37': {'num': '37', 'nome': 'Helena Duarte Ramos', 'partido': 'PRV', 'vice': 'Otávio Lins Barreto',
-           'skin': '#c48e6a', 'hair': '#2b1b12', 'hair_vice': '#55524a', 'shirt': '#5c4a73', 'shirt_vice': '#39506b',
            'gender': 'f', 'gender_vice': 'm'},
     '48': {'num': '48', 'nome': 'Marcos Tavares Albuquerque', 'partido': 'MNB', 'vice': 'Cecília Prado',
-           'skin': '#e8bd93', 'hair': '#454138', 'hair_vice': '#1c1410', 'shirt': '#39506b', 'shirt_vice': '#6b3f4f',
            'gender': 'm', 'gender_vice': 'f'},
     '61': {'num': '61', 'nome': 'Joana Sato Ferreira', 'partido': 'PDA', 'vice': 'Ricardo Menezes',
-           'skin': '#f0cd9e', 'hair': '#17120f', 'hair_vice': '#6b5847', 'shirt': '#6b3f4f', 'shirt_vice': '#4a5a3a',
            'gender': 'f', 'gender_vice': 'm'},
     '84': {'num': '84', 'nome': 'Paulo Henrique Costa', 'partido': 'UCT', 'vice': 'Lúcia Andrade',
-           'skin': '#8a5a3c', 'hair': '#1a1a1a', 'hair_vice': '#3a2a1e', 'shirt': '#4a5a3a', 'shirt_vice': '#5c4a73',
            'gender': 'm', 'gender_vice': 'f'},
 }
 
@@ -31,50 +26,54 @@ THEMES = {
         '--s-bg': 'var(--color-neutral-100)', '--s-ink': 'var(--color-neutral-900)',
         '--s-muted': 'var(--color-neutral-700)', '--s-line': 'var(--color-neutral-300)',
         '--s-accent': 'var(--color-accent-700)', '--s-photo': 'var(--color-neutral-200)',
-        '_photo_hex': '#e4e7f5',
     },
     'contraste': {
         '--s-bg': 'var(--color-bg)', '--s-ink': 'var(--color-text)',
         '--s-muted': 'var(--color-neutral-400)', '--s-line': 'var(--color-neutral-800)',
         '--s-accent': 'var(--color-accent)', '--s-photo': 'var(--color-surface)',
-        '_photo_hex': '#232532',
     },
 }
+
+# One random face per candidate slot for the life of the page (mirrors the
+# design's window.__urnaFaceSeed): stable while voting, fresh on reload.
+_FACE_SEED = None
+
+
+def _face_seed():
+    global _FACE_SEED
+    if _FACE_SEED is None:
+        existing = getattr(window, '__urnaFaceSeed', None)
+        if existing:
+            _FACE_SEED = str(existing)
+        else:
+            import random
+            import string
+            _FACE_SEED = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+            window.__urnaFaceSeed = _FACE_SEED
+    return _FACE_SEED
+
+
+def face_url(key, female):
+    seed = _face_seed() + key
+    h = 0
+    for ch in seed:
+        h = (h * 31 + ord(ch)) & 0xFFFFFFFF
+    idx = h % 100
+    gender_path = 'women' if female else 'men'
+    return f'https://randomuser.me/api/portraits/{gender_path}/{idx}.jpg'
 
 
 def esc(s):
     return (str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'))
 
 
-def portrait_svg(skin, hair, shirt, gender, bg, w, h):
-    """Flat head-and-shoulders placeholder, styled after the plain, low-res
-    ID-style capture shown on the real urna screen: centered subject, flat
-    lighting, no background detail. gender picks a short/long hair silhouette."""
-    cx = w / 2
-    # Long hair falls in front of the shoulders, so it's drawn after the shirt.
-    hair_long = (
-        f'<path d="M {cx - 26} {h * 0.36} Q {cx - 29} {h * 0.58} {cx - 24} {h * 0.80} '
-        f'L {cx - 15} {h * 0.80} Q {cx - 19} {h * 0.56} {cx - 17} {h * 0.36} Z" fill="{hair}"/>'
-        f'<path d="M {cx + 26} {h * 0.36} Q {cx + 29} {h * 0.58} {cx + 24} {h * 0.80} '
-        f'L {cx + 15} {h * 0.80} Q {cx + 19} {h * 0.56} {cx + 17} {h * 0.36} Z" fill="{hair}"/>'
-        if gender == 'f' else ''
-    )
-    return f'''<svg viewBox="0 0 {w} {h}" width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-<rect width="{w}" height="{h}" fill="{bg}"/>
-<path d="M {cx - 34} {h} Q {cx - 36} {h * 0.74} {cx} {h * 0.70} Q {cx + 36} {h * 0.74} {cx + 34} {h} Z" fill="{shirt}"/>
-{hair_long}
-<ellipse cx="{cx}" cy="{h * 0.40}" rx="19" ry="23" fill="{skin}"/>
-<path d="M {cx - 21} {h * 0.34} Q {cx - 23} {h * 0.14} {cx} {h * 0.11} Q {cx + 23} {h * 0.14} {cx + 21} {h * 0.34} Q {cx + 19} {h * 0.22} {cx} {h * 0.20} Q {cx - 19} {h * 0.22} {cx - 21} {h * 0.34} Z" fill="{hair}"/>
-</svg>'''
-
-
-def photo_html(cls, num, skin, hair, shirt, gender, caption, bg, w, h):
-    svg = portrait_svg(skin, hair, shirt, gender, bg, w, h)
-    data_url = 'data:image/svg+xml,' + quote(svg, safe='')
+def photo_html(cls, src, alt, caption):
+    """Real face photo (randomuser.me), filling the same plain photo-box
+    the real urna screen uses for the candidate/vice portraits."""
     return (
         f'<div class="photo-item">'
-        f'<div class="photo-box {cls}"><img src="{data_url}" alt="Foto do candidato {esc(num)}" '
-        f'style="width:100%;height:100%;object-fit:cover"></div>'
+        f'<div class="photo-box {cls}"><img src="{esc(src)}" alt="{esc(alt)}" '
+        f'style="width:100%;height:100%;object-fit:cover" loading="lazy"></div>'
         f'<span class="photo-caption">{esc(caption)}</span>'
         f'</div>'
     )
@@ -82,7 +81,7 @@ def photo_html(cls, num, skin, hair, shirt, gender, caption, bg, w, h):
 
 class Urna:
     def __init__(self, root, theme='tse', teclado=True, teclas=True,
-                 progresso='completa', libras=True, som=True):
+                 progresso='completa', libras=True, som=True, vinculada=False):
         self.root = root
         self.theme = theme
         self.teclado = teclado
@@ -90,14 +89,19 @@ class Urna:
         self.progresso = progresso
         self.libras = libras
         self.som = som
+        self.vinculada = vinculada
 
         self.num = ''
         self.branco = False
         self.fim = False
+        # When vinculada (gated by the mesário terminal), the keypad stays
+        # locked until a urna-liberar event arrives for this voter.
+        self.liberada = not vinculada
 
         self._ac = None
         self._kd_proxy = None
         self._click_proxy = None
+        self._liberar_proxy = None
 
         if self.teclas:
             self._kd_proxy = create_proxy(self._on_keydown)
@@ -105,6 +109,10 @@ class Urna:
 
         self._click_proxy = create_proxy(self._on_click)
         self.root.addEventListener('click', self._click_proxy)
+
+        if self.vinculada:
+            self._liberar_proxy = create_proxy(self._on_liberar)
+            window.addEventListener('urna-liberar', self._liberar_proxy)
 
         self.render()
 
@@ -115,6 +123,16 @@ class Urna:
         if self._click_proxy:
             self.root.removeEventListener('click', self._click_proxy)
             self._click_proxy.destroy()
+        if self._liberar_proxy:
+            window.removeEventListener('urna-liberar', self._liberar_proxy)
+            self._liberar_proxy.destroy()
+
+    def _on_liberar(self, e):
+        self.num = ''
+        self.branco = False
+        self.fim = False
+        self.liberada = True
+        self.render()
 
     # ---- audio ----
     def tone(self, freq, dur, at=0.0):
@@ -180,7 +198,7 @@ class Urna:
             self.press(action)
 
     def press(self, k):
-        if self.fim:
+        if self.fim or (self.vinculada and not self.liberada):
             return
         if k.isdigit():
             if self.branco or len(self.num) >= 2:
@@ -201,6 +219,9 @@ class Urna:
                 return
             self.fim_sound()
             self.fim = True
+            if self.vinculada:
+                self.liberada = False
+                window.dispatchEvent(window.Event.new('urna-fim'))
         self.render()
 
     def reset(self):
@@ -213,6 +234,7 @@ class Urna:
     def render(self):
         theme = THEMES.get(self.theme, THEMES['tse'])
         num, branco, fim = self.num, self.branco, self.fim
+        espera = self.vinculada and not self.liberada and not fim
 
         cand = CANDS.get(num) if len(num) == 2 else None
         is_cand = bool(cand) and not fim
@@ -247,7 +269,7 @@ class Urna:
 
         d1 = num[0] if len(num) > 0 else ''
         d2 = num[1] if len(num) > 1 else ''
-        cur1 = (len(num) == 0 and not branco)
+        cur1 = (len(num) == 0 and not branco and not espera)
         cur2 = (len(num) == 1)
 
         show_seu_voto = len(num) > 0 or branco
@@ -260,10 +282,19 @@ class Urna:
         elif is_cand:
             libras_label = 'Confira e confirme'
 
-        screen_style_vars = ';'.join(f'{k}:{v}' for k, v in theme.items() if not k.startswith('_'))
-        photo_bg = theme['_photo_hex']
+        screen_style_vars = ';'.join(f'{k}:{v}' for k, v in theme.items())
 
-        if fim:
+        if espera:
+            body_html = (
+                '<div class="espera-screen">'
+                '<div class="espera-brasao">brasão</div>'
+                '<span class="espera-title">JUSTIÇA ELEITORAL</span>'
+                '</div>'
+                '<div class="espera-footer">'
+                '<span>Zona ZZ · Seção 0412</span><span>Lisboa · Portugal</span>'
+                '</div>'
+            )
+        elif fim:
             body_html = '<div class="fim-screen">FIM</div>'
         else:
             left_parts = []
@@ -305,10 +336,12 @@ class Urna:
 
             right_html = ''
             if is_cand:
-                pres_photo = photo_html('photo-pres', cand['num'], cand['skin'], cand['hair'],
-                                         cand['shirt'], cand['gender'], 'Presidente', photo_bg, 96, 120)
-                vice_photo = photo_html('photo-vice', cand['num'], cand['skin'], cand['hair_vice'],
-                                         cand['shirt_vice'], cand['gender_vice'], 'Vice-Presidente', photo_bg, 72, 90)
+                pres_src = face_url(cand['num'], cand['gender'] == 'f')
+                vice_src = face_url(cand['num'] + 'v', cand['gender_vice'] == 'f')
+                pres_photo = photo_html('photo-pres', pres_src,
+                                         f'Foto do candidato a Presidente {cand["num"]}', 'Presidente')
+                vice_photo = photo_html('photo-vice', vice_src,
+                                         f'Foto do candidato a Vice-Presidente {cand["num"]}', 'Vice-Presidente')
                 right_html = f'<div class="photos-col">{pres_photo}{vice_photo}</div>'
 
             body_html = (
@@ -328,7 +361,7 @@ class Urna:
                 )
 
         libras_html = ''
-        if self.libras and not fim:
+        if self.libras and not fim and not espera:
             libras_html = (
                 '<div class="libras-box">'
                 '<span class="libras-kicker">Intérprete Libras</span>'
@@ -336,9 +369,11 @@ class Urna:
                 '</div>'
             )
 
+        progress_html = '' if espera else f'<div class="progress-row">{"".join(steps_html)}</div>'
+
         screen_html = (
             f'<div class="screen" style="{screen_style_vars}" data-screen-label="Tela da urna">'
-            f'<div class="progress-row">{"".join(steps_html)}</div>'
+            f'{progress_html}'
             f'{body_html}'
             f'{libras_html}'
             f'</div>'
@@ -380,11 +415,16 @@ class Urna:
 
         below_html = ''
         if self.teclado:
-            hint = ('Teclado físico: 0–9 · B = branco · ⌫ = corrige · Enter = confirma'
-                    if self.teclas else 'Clique nas teclas para votar')
+            if self.vinculada:
+                hint = 'Liberada pelo terminal do mesário'
+                reset_btn = ''
+            else:
+                hint = ('Teclado físico: 0–9 · B = branco · ⌫ = corrige · Enter = confirma'
+                        if self.teclas else 'Clique nas teclas para votar')
+                reset_btn = '<button type="button" class="btn" data-action="reset">Liberar nova votação</button>'
             below_html = (
                 '<div class="below-row">'
-                '<button type="button" class="btn" data-action="reset">Liberar nova votação</button>'
+                f'{reset_btn}'
                 f'<span>{esc(hint)}</span>'
                 '</div>'
             )

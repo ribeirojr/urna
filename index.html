@@ -37,14 +37,26 @@
     <label><input type="checkbox" id="ctl-libras" checked> Libras</label>
     <label><input type="checkbox" id="ctl-som" checked> Som</label>
     <label><input type="checkbox" id="ctl-teclas" checked> Teclado físico</label>
+    <label><input type="checkbox" id="ctl-vinculada" checked> Vinculada ao mesário</label>
     <button type="button" class="btn" id="ctl-reset">Reiniciar</button>
   </div>
 
   <div class="urna-wrap">
-    <div id="urna-root"></div>
+    <div class="terminal-col">
+      <span class="terminal-label" id="lbl-mesario">Terminal do mesário</span>
+      <div id="mesario-root"></div>
+    </div>
+    <div class="terminal-col">
+      <span class="terminal-label">Urna do eleitor</span>
+      <div id="urna-root"></div>
+    </div>
   </div>
 
   <p style="font-size:12.5px;color:var(--color-neutral-400);max-width:680px">
+    Com "Vinculada ao mesário" marcado, a urna fica à espera até o mesário identificar o eleitor
+    (CPF/título de exemplo + leitor biométrico — "Simular falha na digital" 4× cai para o ano de
+    nascimento) e liberar o voto; a urna então trava de volta ao concluir. Desmarcado, a urna vota
+    livremente, como antes.<br>
     Cola para testar: números <b>37</b>, <b>48</b>, <b>61</b> ou <b>84</b> retornam um candidato fictício;
     qualquer outro número de 2 dígitos gera voto nulo. BRANCO exige o campo vazio.
   </p>
@@ -55,23 +67,27 @@ async function boot() {
   const pyodide = await loadPyodide();
   window.__pyodide = pyodide;
 
-  const resp = await fetch('./urna.py');
-  const code = await resp.text();
-  pyodide.FS.writeFile('/urna.py', code);
+  for (const mod of ['urna', 'mesario']) {
+    const resp = await fetch(`./${mod}.py`);
+    const code = await resp.text();
+    pyodide.FS.writeFile(`/${mod}.py`, code);
+  }
 
   await pyodide.runPythonAsync(`
 import sys
 sys.path.insert(0, '/')
 import urna
+import mesario
 `);
 
-  const state = { theme: 'tse', progresso: 'completa', libras: true, som: true, teclas: true };
+  const state = {
+    theme: 'tse', progresso: 'completa', libras: true, som: true, teclas: true,
+    vinculada: true,
+  };
 
-  function mount() {
+  function mountUrna() {
     const urnaMod = pyodide.pyimport('urna');
-    if (window.__urnaInstance) {
-      window.__urnaInstance.destroy();
-    }
+    if (window.__urnaInstance) window.__urnaInstance.destroy();
     window.__urnaInstance = urnaMod.mount(
       '#urna-root',
       pyodide.toPy({
@@ -81,34 +97,60 @@ import urna
         progresso: state.progresso,
         libras: state.libras,
         som: state.som,
+        vinculada: state.vinculada,
       })
     );
   }
 
-  mount();
+  function mountMesario() {
+    const mesarioMod = pyodide.pyimport('mesario');
+    if (window.__mesarioInstance) window.__mesarioInstance.destroy();
+    window.__mesarioInstance = mesarioMod.mount('#mesario-root', pyodide.toPy({ teclado: true }));
+  }
+
+  function mountAll() {
+    mountUrna();
+    if (state.vinculada) mountMesario();
+  }
+
+  function syncVinculadaUI() {
+    document.getElementById('lbl-mesario').parentElement.style.display = state.vinculada ? '' : 'none';
+    if (!state.vinculada && window.__mesarioInstance) {
+      window.__mesarioInstance.destroy();
+      window.__mesarioInstance = null;
+    }
+  }
+
+  syncVinculadaUI();
+  mountAll();
 
   document.getElementById('ctl-theme').addEventListener('change', (e) => {
     state.theme = e.target.value;
-    mount();
+    mountUrna();
   });
   document.getElementById('ctl-progresso').addEventListener('change', (e) => {
     state.progresso = e.target.value;
-    mount();
+    mountUrna();
   });
   document.getElementById('ctl-libras').addEventListener('change', (e) => {
     state.libras = e.target.checked;
-    mount();
+    mountUrna();
   });
   document.getElementById('ctl-som').addEventListener('change', (e) => {
     state.som = e.target.checked;
-    mount();
+    mountUrna();
   });
   document.getElementById('ctl-teclas').addEventListener('change', (e) => {
     state.teclas = e.target.checked;
-    mount();
+    mountUrna();
+  });
+  document.getElementById('ctl-vinculada').addEventListener('change', (e) => {
+    state.vinculada = e.target.checked;
+    syncVinculadaUI();
+    mountAll();
   });
   document.getElementById('ctl-reset').addEventListener('click', () => {
-    window.__urnaInstance.reset();
+    if (window.__urnaInstance) window.__urnaInstance.reset();
   });
 
   document.getElementById('loading').style.display = 'none';
