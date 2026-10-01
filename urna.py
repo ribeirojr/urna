@@ -5,12 +5,21 @@ state machine: digit entry -> candidate lookup / null vote / blank vote -> confi
 """
 from js import document, window
 from pyodide.ffi import create_proxy
+from urllib.parse import quote
 
 CANDS = {
-    '37': {'num': '37', 'nome': 'Helena Duarte Ramos', 'partido': 'PRV', 'vice': 'Otávio Lins Barreto'},
-    '48': {'num': '48', 'nome': 'Marcos Tavares Albuquerque', 'partido': 'MNB', 'vice': 'Cecília Prado'},
-    '61': {'num': '61', 'nome': 'Joana Sato Ferreira', 'partido': 'PDA', 'vice': 'Ricardo Menezes'},
-    '84': {'num': '84', 'nome': 'Paulo Henrique Costa', 'partido': 'UCT', 'vice': 'Lúcia Andrade'},
+    '37': {'num': '37', 'nome': 'Helena Duarte Ramos', 'partido': 'PRV', 'vice': 'Otávio Lins Barreto',
+           'skin': '#c48e6a', 'hair': '#2b1b12', 'hair_vice': '#55524a', 'shirt': '#5c4a73', 'shirt_vice': '#39506b',
+           'gender': 'f', 'gender_vice': 'm'},
+    '48': {'num': '48', 'nome': 'Marcos Tavares Albuquerque', 'partido': 'MNB', 'vice': 'Cecília Prado',
+           'skin': '#e8bd93', 'hair': '#454138', 'hair_vice': '#1c1410', 'shirt': '#39506b', 'shirt_vice': '#6b3f4f',
+           'gender': 'm', 'gender_vice': 'f'},
+    '61': {'num': '61', 'nome': 'Joana Sato Ferreira', 'partido': 'PDA', 'vice': 'Ricardo Menezes',
+           'skin': '#f0cd9e', 'hair': '#17120f', 'hair_vice': '#6b5847', 'shirt': '#6b3f4f', 'shirt_vice': '#4a5a3a',
+           'gender': 'f', 'gender_vice': 'm'},
+    '84': {'num': '84', 'nome': 'Paulo Henrique Costa', 'partido': 'UCT', 'vice': 'Lúcia Andrade',
+           'skin': '#8a5a3c', 'hair': '#1a1a1a', 'hair_vice': '#3a2a1e', 'shirt': '#4a5a3a', 'shirt_vice': '#5c4a73',
+           'gender': 'm', 'gender_vice': 'f'},
 }
 
 STEPS = ['Dep. Federal', 'Dep. Estadual', 'Senador 1ª', 'Senador 2ª', 'Governador', 'Presidente']
@@ -22,17 +31,53 @@ THEMES = {
         '--s-bg': 'var(--color-neutral-100)', '--s-ink': 'var(--color-neutral-900)',
         '--s-muted': 'var(--color-neutral-700)', '--s-line': 'var(--color-neutral-300)',
         '--s-accent': 'var(--color-accent-700)', '--s-photo': 'var(--color-neutral-200)',
+        '_photo_hex': '#e4e7f5',
     },
     'contraste': {
         '--s-bg': 'var(--color-bg)', '--s-ink': 'var(--color-text)',
         '--s-muted': 'var(--color-neutral-400)', '--s-line': 'var(--color-neutral-800)',
         '--s-accent': 'var(--color-accent)', '--s-photo': 'var(--color-surface)',
+        '_photo_hex': '#232532',
     },
 }
 
 
 def esc(s):
     return (str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'))
+
+
+def portrait_svg(skin, hair, shirt, gender, bg, w, h):
+    """Flat head-and-shoulders placeholder, styled after the plain, low-res
+    ID-style capture shown on the real urna screen: centered subject, flat
+    lighting, no background detail. gender picks a short/long hair silhouette."""
+    cx = w / 2
+    # Long hair falls in front of the shoulders, so it's drawn after the shirt.
+    hair_long = (
+        f'<path d="M {cx - 26} {h * 0.36} Q {cx - 29} {h * 0.58} {cx - 24} {h * 0.80} '
+        f'L {cx - 15} {h * 0.80} Q {cx - 19} {h * 0.56} {cx - 17} {h * 0.36} Z" fill="{hair}"/>'
+        f'<path d="M {cx + 26} {h * 0.36} Q {cx + 29} {h * 0.58} {cx + 24} {h * 0.80} '
+        f'L {cx + 15} {h * 0.80} Q {cx + 19} {h * 0.56} {cx + 17} {h * 0.36} Z" fill="{hair}"/>'
+        if gender == 'f' else ''
+    )
+    return f'''<svg viewBox="0 0 {w} {h}" width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+<rect width="{w}" height="{h}" fill="{bg}"/>
+<path d="M {cx - 34} {h} Q {cx - 36} {h * 0.74} {cx} {h * 0.70} Q {cx + 36} {h * 0.74} {cx + 34} {h} Z" fill="{shirt}"/>
+{hair_long}
+<ellipse cx="{cx}" cy="{h * 0.40}" rx="19" ry="23" fill="{skin}"/>
+<path d="M {cx - 21} {h * 0.34} Q {cx - 23} {h * 0.14} {cx} {h * 0.11} Q {cx + 23} {h * 0.14} {cx + 21} {h * 0.34} Q {cx + 19} {h * 0.22} {cx} {h * 0.20} Q {cx - 19} {h * 0.22} {cx - 21} {h * 0.34} Z" fill="{hair}"/>
+</svg>'''
+
+
+def photo_html(cls, num, skin, hair, shirt, gender, caption, bg, w, h):
+    svg = portrait_svg(skin, hair, shirt, gender, bg, w, h)
+    data_url = 'data:image/svg+xml,' + quote(svg, safe='')
+    return (
+        f'<div class="photo-item">'
+        f'<div class="photo-box {cls}"><img src="{data_url}" alt="Foto do candidato {esc(num)}" '
+        f'style="width:100%;height:100%;object-fit:cover"></div>'
+        f'<span class="photo-caption">{esc(caption)}</span>'
+        f'</div>'
+    )
 
 
 class Urna:
@@ -215,7 +260,8 @@ class Urna:
         elif is_cand:
             libras_label = 'Confira e confirme'
 
-        screen_style_vars = ';'.join(f'{k}:{v}' for k, v in theme.items())
+        screen_style_vars = ';'.join(f'{k}:{v}' for k, v in theme.items() if not k.startswith('_'))
+        photo_bg = theme['_photo_hex']
 
         if fim:
             body_html = '<div class="fim-screen">FIM</div>'
@@ -259,18 +305,11 @@ class Urna:
 
             right_html = ''
             if is_cand:
-                right_html = (
-                    '<div class="photos-col">'
-                    '<div class="photo-item">'
-                    f'<div class="photo-box photo-pres"><span>foto</span><span>{esc(cand["num"])}</span></div>'
-                    '<span class="photo-caption">Presidente</span>'
-                    '</div>'
-                    '<div class="photo-item">'
-                    '<div class="photo-box photo-vice">foto</div>'
-                    '<span class="photo-caption">Vice-Presidente</span>'
-                    '</div>'
-                    '</div>'
-                )
+                pres_photo = photo_html('photo-pres', cand['num'], cand['skin'], cand['hair'],
+                                         cand['shirt'], cand['gender'], 'Presidente', photo_bg, 96, 120)
+                vice_photo = photo_html('photo-vice', cand['num'], cand['skin'], cand['hair_vice'],
+                                         cand['shirt_vice'], cand['gender_vice'], 'Vice-Presidente', photo_bg, 72, 90)
+                right_html = f'<div class="photos-col">{pres_photo}{vice_photo}</div>'
 
             body_html = (
                 f'<div class="body-row">'
