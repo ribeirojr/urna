@@ -21,45 +21,182 @@
     <p>Simulação em Python (via Pyodide, rodando no navegador) da tela de votação para Presidente, com os componentes descritos pelo TSE para 2026: barra de progresso, fonte Atkinson Hyperlegible, intérprete de Libras e teclado com braile. Candidatos e partidos são fictícios.</p>
   </div>
 
-  <div class="controls">
-    <label>Tema
-      <select id="ctl-theme">
-        <option value="tse">Fiel à urna (clara)</option>
-        <option value="contraste">Alto contraste (escura)</option>
-      </select>
-    </label>
-    <label>Progresso
-      <select id="ctl-progresso">
-        <option value="completa">6 etapas completas</option>
-        <option value="presidente">Somente Presidente</option>
-      </select>
-    </label>
-    <label><input type="checkbox" id="ctl-libras" checked> Libras</label>
-    <label><input type="checkbox" id="ctl-som" checked> Som</label>
-    <label><input type="checkbox" id="ctl-teclas" checked> Teclado físico</label>
-    <label><input type="checkbox" id="ctl-vinculada" checked> Vinculada ao mesário</label>
-    <button type="button" class="btn" id="ctl-reset">Reiniciar</button>
-  </div>
+  <nav class="tabs" role="tablist">
+    <button type="button" class="tab active" data-tab="votar" role="tab" aria-selected="true">Votar</button>
+    <button type="button" class="tab" data-tab="processo" role="tab" aria-selected="false">Como funciona o voto</button>
+    <button type="button" class="tab" data-tab="totalizacao" role="tab" aria-selected="false">Apuração e totalização</button>
+  </nav>
 
-  <div class="urna-wrap">
-    <div class="terminal-col">
-      <span class="terminal-label" id="lbl-mesario">Terminal do mesário</span>
-      <div id="mesario-root"></div>
+  <section class="tab-panel" id="tab-votar" role="tabpanel">
+    <div class="controls">
+      <label>Tema
+        <select id="ctl-theme">
+          <option value="tse">Fiel à urna (clara)</option>
+          <option value="contraste">Alto contraste (escura)</option>
+        </select>
+      </label>
+      <label>Progresso
+        <select id="ctl-progresso">
+          <option value="completa">6 etapas completas</option>
+          <option value="presidente">Somente Presidente</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="ctl-libras" checked> Libras</label>
+      <label><input type="checkbox" id="ctl-som" checked> Som</label>
+      <label><input type="checkbox" id="ctl-teclas" checked> Teclado físico</label>
+      <label><input type="checkbox" id="ctl-vinculada" checked> Vinculada ao mesário</label>
+      <button type="button" class="btn" id="ctl-reset">Reiniciar</button>
     </div>
-    <div class="terminal-col">
-      <span class="terminal-label">Urna do eleitor</span>
-      <div id="urna-root"></div>
-    </div>
-  </div>
 
-  <p style="font-size:12.5px;color:var(--color-neutral-400);max-width:680px">
-    Com "Vinculada ao mesário" marcado, a urna fica à espera até o mesário identificar o eleitor
-    (CPF/título de exemplo + leitor biométrico — "Simular falha na digital" 4× cai para o ano de
-    nascimento) e liberar o voto; a urna então trava de volta ao concluir. Desmarcado, a urna vota
-    livremente, como antes.<br>
-    Cola para testar: números <b>37</b>, <b>48</b>, <b>61</b> ou <b>84</b> retornam um candidato fictício;
-    qualquer outro número de 2 dígitos gera voto nulo. BRANCO exige o campo vazio.
-  </p>
+    <div class="urna-wrap">
+      <div class="terminal-col">
+        <span class="terminal-label" id="lbl-mesario">Terminal do mesário</span>
+        <div id="mesario-root"></div>
+      </div>
+      <div class="terminal-col">
+        <span class="terminal-label">Urna do eleitor</span>
+        <div id="urna-root"></div>
+      </div>
+    </div>
+
+    <p style="font-size:12.5px;color:var(--color-neutral-400);max-width:680px">
+      Com "Vinculada ao mesário" marcado, a urna fica à espera até o mesário identificar o eleitor
+      (CPF/título de exemplo + leitor biométrico — "Simular falha na digital" 4× cai para o ano de
+      nascimento) e liberar o voto; a urna então trava de volta ao concluir. Desmarcado, a urna vota
+      livremente, como antes.<br>
+      Cola para testar: números <b>37</b>, <b>48</b>, <b>61</b> ou <b>84</b> retornam um candidato fictício;
+      qualquer outro número de 2 dígitos gera voto nulo. BRANCO exige o campo vazio.
+    </p>
+  </section>
+
+  <section class="tab-panel hidden" id="tab-processo" role="tabpanel">
+    <div class="doc">
+      <div>
+        <h2>Como funciona o voto, do portão ao "FIM"</h2>
+        <p class="lede">O fluxo abaixo é o processo real descrito pelo TSE para a votação presencial — não é uma licença criativa do mockup. As duas telas da aba "Votar" simulam exatamente estas etapas.</p>
+      </div>
+
+      <section>
+        <h3>Antes da votação começar</h3>
+        <p>Às 7h do dia da eleição, o presidente de mesa liga a urna diante de fiscais de partido e testemunhas, e a máquina imprime a <b>zerésima</b> — um relatório em papel provando que todos os candidatos começam com zero votos. Só depois disso a seção abre para votar.</p>
+      </section>
+
+      <section>
+        <h3>Passo a passo do eleitor</h3>
+        <div class="steps">
+          <div class="step">
+            <span class="step-num"></span>
+            <div class="step-body">
+              <span class="step-title">Chegada e identificação</span>
+              <span class="step-desc">O eleitor se apresenta ao mesário no Terminal do Mesário — um aparelho separado da urna de votar. O mesário digita o CPF ou o número do título; a tela mostra nome e situação do eleitor na seção.</span>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num"></span>
+            <div class="step-body">
+              <span class="step-title">Biometria (com alternativa oficial)</span>
+              <span class="step-desc">O eleitor apresenta documento com foto e posiciona o dedo no leitor biométrico acoplado ao terminal. Se a digital não bater ou não estiver cadastrada, a identificação cai para conferência do documento pelo mesário — uma alternativa prevista, não uma falha do sistema.</span>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num"></span>
+            <div class="step-body">
+              <span class="step-title">Liberação da urna</span>
+              <span class="step-desc">Confirmada a identidade, o terminal do mesário libera o teclado da urna para um único voto. LEDs no terminal mostram se a urna está pronta, votando ou aguardando — a urna não aceita nenhuma tecla fora dessa janela.</span>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num"></span>
+            <div class="step-body">
+              <span class="step-title">Votação na cabine, sozinho</span>
+              <span class="step-desc">O eleitor vota em ordem fixa definida pelo TSE: deputado federal (4 dígitos) → deputado estadual/distrital (5) → senador (3 — em 2026, duas vagas em disputa, portanto dois votos de senador) → governador (2) → presidente (2, última etapa).</span>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num"></span>
+            <div class="step-body">
+              <span class="step-title">CONFIRMA / CORRIGE / BRANCO</span>
+              <span class="step-desc">Tecla verde confirma o número digitado; laranja apaga antes de confirmar; branca registra voto em branco para aquele cargo (aperta BRANCO, depois CONFIRMA). Um número sem candidato correspondente, confirmado, vira voto nulo.</span>
+            </div>
+          </div>
+          <div class="step">
+            <span class="step-num"></span>
+            <div class="step-body">
+              <span class="step-title">"FIM"</span>
+              <span class="step-desc">Depois do último cargo (presidente), a tela mostra "FIM" e a urna trava novamente até o mesário liberar o próximo eleitor.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="note">
+        A urna brasileira não entrega nenhum comprovante em papel do voto individual ao eleitor — o chamado "voto impresso" é uma proposta recorrentemente discutida no Congresso e rejeitada ou barrada pelo STF, com TSE e boa parte dos especialistas técnicos argumentando que o papel abriria novas vulnerabilidades (coação por foto do voto, fraude na urna de papel) sem ganho proporcional de segurança. É um debate de política pública legítimo, não um consenso fechado.
+      </div>
+
+      <div class="sources">
+        Fontes: TSE — "Como nasce uma urna" (2024); Manual e Guia Rápido do Mesário 2026 (Justiça Eleitoral); cobertura consolidada de ordem de votação por múltiplos veículos a partir do calendário oficial do TSE para 2026.
+      </div>
+    </div>
+  </section>
+
+  <section class="tab-panel hidden" id="tab-totalizacao" role="tabpanel">
+    <div class="doc">
+      <div>
+        <h2>Apuração e totalização: do clique ao resultado nacional</h2>
+        <p class="lede">Esta é a parte que menos aparece na tela da urna, mas é onde a integridade do voto realmente se defende: como cada voto vira um número, e como milhares de urnas viram um resultado só.</p>
+      </div>
+
+      <section>
+        <h3>RDV — Registro Digital do Voto</h3>
+        <p>Cada voto confirmado é gravado em um arquivo interno, o RDV, <b>em ordem embaralhada</b> — de propósito. A ideia é simples: mesmo que o RDV guarde todos os votos daquela urna, a ordem aleatória impede reconstruir "o eleitor nº 47 votou em X", já que a urna não grava nenhuma ligação entre a ordem de chegada dos eleitores e a ordem dos votos no arquivo. O RDV existe justamente para permitir recontagem e auditoria independentes dos totais, e é protegido por assinatura digital e hash.</p>
+      </section>
+
+      <section>
+        <h3>BU — Boletim de Urna</h3>
+        <p>Ao final da votação (17h, horário de Brasília, por padrão), cada urna individualmente soma os próprios votos e gera o BU: total por partido, por candidato, votos nominais, votos de legenda, brancos, nulos, e o total de eleitores aptos da seção. São impressas cinco vias — uma fica afixada na porta do local de votação, três vão para o cartório eleitoral junto da ata, uma fica com os fiscais de partido presentes. Cada via impressa traz um <b>QR code</b> que permite a qualquer pessoa conferir, depois, se o resultado publicado bate com o que foi apurado ali. Uma cópia digital também é gravada, assinada digitalmente, para a fase de totalização.</p>
+      </section>
+
+      <section>
+        <h3>Armazenamento e criptografia na urna</h3>
+        <p>Os votos ficam gravados em dois cartões de memória (um interno, um externo) com os mesmos dados, por redundância. O TSE descreve o uso de assinatura digital protegendo tanto os dados de entrada (listas de eleitores, candidatos, configuração da eleição) quanto os de saída (BU, RDV), além de hash para detectar qualquer alteração posterior a arquivos e ao próprio código-fonte.</p>
+        <div class="note">
+          O TSE também cita o uso de AES-256 e fala em "mais de 30 camadas de segurança" — vale tratar esse número como uma caracterização do próprio TSE, não como uma contagem auditada por terceiros independentes, já que uma especificação criptográfica completa e revisada por pares não está publicamente disponível nas fontes consultadas.
+        </div>
+      </section>
+
+      <section>
+        <h3>A urna nunca fica conectada à internet durante a votação</h3>
+        <p>Esta é uma afirmação bem documentada e repetida pelo TSE e pela imprensa técnica: a urna não tem placa de rede, Wi-Fi, Bluetooth ou antena — o hardware simplesmente não inclui esses componentes. Durante a votação, o aparelho opera isolado, sem qualquer conexão.</p>
+        <p>Depois do encerramento, o arquivo de resultado (já assinado digitalmente dentro da urna) é transportado fisicamente em mídia removível até um ponto de transmissão ligado à <b>rede privativa da Justiça Eleitoral</b> — não à internet pública. Um "Sistema Transportador" envia os arquivos a um Centro de Recebimento, que confere assinatura e integridade antes de qualquer processamento.</p>
+        <div class="note">
+          Específico de 2026: para locais remotos sem conectividade convencional (ilhas, aldeias indígenas, sobretudo no Amazonas e Pará), o TSE está implantando até 1.113 terminais de satélite Starlink como "Postos Avançados de Transmissão". O arquivo já sai da urna assinado digitalmente e é adicionalmente cifrado por VPN durante essa transmissão; o provedor do satélite não tem acesso ao conteúdo da apuração. Isto é uma solução operacional deste ciclo eleitoral, não uma característica permanente do sistema — ciclos anteriores usaram outros meios de conectividade remota.
+        </div>
+      </section>
+
+      <section>
+        <h3>Totalização: de milhares de boletins a um resultado</h3>
+        <p>O TSE separa dois conceitos: <b>apuração</b> é o que cada urna faz sozinha, somando só os próprios votos; <b>totalização</b> é a soma, pela Justiça Eleitoral, de todos os boletins recebidos de todas as urnas. O sistema que faz essa soma (SISTOT) agrega os BUs verificados por cargo e por nível de circunscrição eleitoral (município, estado, país, conforme o cargo). Os resultados são publicados de forma incremental, à medida que os boletins chegam e são processados — por isso é possível acompanhar, ao vivo, a porcentagem de seções já apuradas.</p>
+      </section>
+
+      <section>
+        <h3>Mecanismos públicos de auditoria</h3>
+        <ul class="plain">
+          <li><b>Teste Público de Segurança (TPS)</b>: a cada dois anos, aproximadamente, qualquer cidadão maior de 18 anos pode se inscrever; os aprovados passam dias na sede do TSE em Brasília tentando encontrar vulnerabilidades no sistema, sob condições controladas.</li>
+          <li><b>Auditoria contínua do código-fonte</b>: partidos, OAB e instituições técnicas credenciadas podem inspecionar o código-fonte continuamente, até a Cerimônia de Assinatura Digital e Lacração, pouco antes da eleição — depois disso, o código é lacrado e qualquer alteração posterior seria detectável pelo hash.</li>
+          <li><b>Boletim afixado + QR code</b>: qualquer pessoa pode comparar o BU impresso na porta do local de votação com o resultado depois publicado e totalizado.</li>
+          <li><b>Recontagem via RDV</b>: como o RDV guarda cada voto individual (embaralhado), é possível recalcular o BU de uma seção de forma independente do software original de apuração.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <b>Sobre alegações de fraude:</b> desde 2018, e com mais força em 2022, houve alegações públicas de fragilidade ou falta de auditabilidade do sistema eletrônico de votação, feitas sobretudo por apoiadores do ex-presidente Jair Bolsonaro. Segundo o TSE, a Justiça Eleitoral e checadores de fatos independentes, essas alegações não vieram acompanhadas de evidência técnica, e um pedido de anulação dos votos eletrônicos apresentado após a eleição de 2022 foi rejeitado pelo TSE por falta de provas. Uma investigação da Polícia Federal sobre uma tentativa de acesso não autorizado aos sistemas eleitorais, segundo o TSE, não encontrou indícios de fraude ou comprometimento da apuração. Trata-se de um tema politicamente sensível e ainda com desdobramentos judiciais em curso — o resumo acima atribui as conclusões ao TSE, à Justiça Eleitoral e a investigações oficiais, e não as apresenta como posição própria deste texto.
+      </div>
+
+      <div class="sources">
+        Fontes: TSE — "Registro Digital do Voto permite recontagem..." (2021); "Boletim de Urna" e "Totalização dos resultados das eleições" (tse.jus.br/eleicoes/historia); notícias sobre o Teste Público de Segurança e a Cerimônia de Assinatura Digital e Lacração; cobertura sobre a implantação de terminais Starlink em 2026 (Olhar Digital, Tecnoblog, Canaltech); Agência Lupa e Agência Brasil sobre alegações de fraude e decisões do TSE.
+      </div>
+    </div>
+  </section>
 </main>
 
 <script>
@@ -157,6 +294,24 @@ import mesario
   document.getElementById('page').classList.remove('hidden');
 }
 
+function initTabs() {
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.tab;
+      tabs.forEach((b) => {
+        const active = b === btn;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-selected', String(active));
+      });
+      document.querySelectorAll('.tab-panel').forEach((panel) => {
+        panel.classList.toggle('hidden', panel.id !== `tab-${name}`);
+      });
+    });
+  });
+}
+
+initTabs();
 boot();
 </script>
 </body>
