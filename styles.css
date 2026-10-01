@@ -453,3 +453,14 @@ a:hover { color: var(--color-accent-200); }
   text-align: center; letter-spacing: .04em;
 }
 .tm-reader-hint { font: 400 10.5px/1.35 var(--font-body); color: var(--color-neutral-400); text-align: center; }
+
+.tm-zeresima-body { gap: 7px; }
+.tm-zeresima-list {
+  display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums;
+  overflow-y: auto; flex: 1;
+}
+.tm-zeresima-row {
+  display: flex; justify-content: space-between; gap: 10px;
+  font-size: 12px; line-height: 1.5; border-bottom: 1px dotted var(--color-neutral-300); padding: 1px 0;
+}
+.tm-zeresima-row span:last-child { font-weight: 700; }

@@ -1,14 +1,25 @@
 """
 Terminal do Mesário 2026 — poll-worker terminal, driven from Python in
-Pyodide. Mirrors the design mockup's flow: identificação (CPF/título) ->
-biometria (fingerprint reader, simulated failure after 4 tries falls back
-to birth-year confirmation) -> libera o voto -> aguarda o fim do voto na
-urna (via window events 'urna-liberar' / 'urna-fim') -> concluído.
+Pyodide. Mirrors the design mockup's flow: zerésima (zero-report printed
+before polls open) -> identificação (CPF/título) -> biometria (fingerprint
+reader, simulated failure after 4 tries falls back to birth-year
+confirmation) -> libera o voto -> aguarda o fim do voto na urna (via window
+events 'urna-liberar' / 'urna-fim') -> concluído.
 """
 from js import document, window
 from pyodide.ffi import create_proxy
 
 ELEITOR = {'nome': 'Ana Beatriz Moura', 'titulo': '0123 4567 8901', 'ano': '1987'}
+
+# Same fictional candidates as urna.py's CANDS, listed here only for the
+# zerésima printout (deliberately not imported, to keep each terminal
+# standalone).
+CANDS_PRESIDENTE = [
+    {'num': '37', 'nome': 'Helena Duarte Ramos', 'partido': 'PRV'},
+    {'num': '48', 'nome': 'Marcos Tavares Albuquerque', 'partido': 'MNB'},
+    {'num': '61', 'nome': 'Joana Sato Ferreira', 'partido': 'PDA'},
+    {'num': '84', 'nome': 'Paulo Henrique Costa', 'partido': 'UCT'},
+]
 
 
 def esc(s):
@@ -29,9 +40,10 @@ class Mesario:
         self.root = root
         self.teclado = teclado
 
-        self.fase = 'ident'  # ident -> bio -> ano (fallback) -> votando -> concluido
+        self.fase = 'zeresima'  # zeresima -> ident -> bio -> ano (fallback) -> votando -> concluido
         self.campo = ''
         self.tentativa = 0
+        self.zeresima_impressa = False
 
         self._click_proxy = create_proxy(self._on_click)
         self.root.addEventListener('click', self._click_proxy)
@@ -96,6 +108,12 @@ class Mesario:
         self.render()
 
     def confirma(self):
+        if self.fase == 'zeresima':
+            if not self.zeresima_impressa:
+                self.imprimir_zeresima()
+            else:
+                self.abrir_votacao()
+            return
         if self.fase == 'ident' and len(self.campo) >= 11:
             self.fase = 'bio'
             self.campo = ''
@@ -136,11 +154,46 @@ class Mesario:
             self.campo = '012345678901'
             self.render()
 
+    def imprimir_zeresima(self):
+        if self.fase == 'zeresima' and not self.zeresima_impressa:
+            self.zeresima_impressa = True
+            self.render()
+
+    def abrir_votacao(self):
+        if self.fase == 'zeresima' and self.zeresima_impressa:
+            self.fase = 'ident'
+            self.render()
+
     def render(self):
         fase, campo, tentativa = self.fase, self.campo, self.tentativa
         votando = fase == 'votando'
 
-        if fase == 'ident':
+        if fase == 'zeresima':
+            if not self.zeresima_impressa:
+                body = (
+                    '<div class="tm-body">'
+                    '<span class="tm-label">ANTES DE ABRIR A VOTAÇÃO</span>'
+                    '<span class="tm-text">Confira, com testemunhas e fiscais presentes, que todos os candidatos estão com zero votos.</span>'
+                    '<span class="tm-hint" style="margin-top:auto">CONFIRMA para imprimir a zerésima</span>'
+                    '</div>'
+                )
+            else:
+                rows = ''.join(
+                    f'<div class="tm-zeresima-row"><span>{esc(c["num"])} · {esc(c["nome"])} ({esc(c["partido"])})</span><span>0</span></div>'
+                    for c in CANDS_PRESIDENTE
+                )
+                body = (
+                    '<div class="tm-body tm-zeresima-body">'
+                    '<span class="tm-label">ZERÉSIMA — PRESIDENTE DA REPÚBLICA</span>'
+                    '<div class="tm-zeresima-list">'
+                    f'{rows}'
+                    '<div class="tm-zeresima-row"><span>Brancos</span><span>0</span></div>'
+                    '<div class="tm-zeresima-row"><span>Nulos</span><span>0</span></div>'
+                    '</div>'
+                    '<span class="tm-hint">Relatório impresso e conferido · CONFIRMA para abrir a votação</span>'
+                    '</div>'
+                )
+        elif fase == 'ident':
             body = (
                 '<div class="tm-body">'
                 '<span class="tm-label">IDENTIFICAÇÃO DO ELEITOR</span>'
@@ -218,7 +271,7 @@ class Mesario:
                 '</div>'
             )
             led_votando = 'tm-led-on' if votando else ''
-            led_pronta = 'tm-led-on' if not votando else ''
+            led_pronta = 'tm-led-on' if (fase != 'zeresima' and not votando) else ''
             keyboard_html = (
                 '<div class="tm-keyboard">'
                 '<div class="tm-leds">'
@@ -244,7 +297,7 @@ class Mesario:
         shell_html = f'<div class="tm-shell">{screen_html}{keyboard_html}</div>'
 
         below_html = ''
-        if self.teclado:
+        if self.teclado and fase != 'zeresima':
             below_html = (
                 '<div class="below-row">'
                 '<button type="button" class="btn btn-secondary" data-action="exemplo">Preencher título de exemplo</button>'
