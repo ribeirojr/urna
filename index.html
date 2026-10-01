@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Urna Eletrônica 2026</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <span>Carregando Python (Pyodide)…</span>
+</div>
+
+<main class="page hidden" id="page">
+  <div class="hero">
+    <span class="kicker">Estudo de interface · Eleições Gerais 2026 · 1º turno</span>
+    <h1>Urna eletrônica — voto para Presidente da República</h1>
+    <p>Simulação em Python (via Pyodide, rodando no navegador) da tela de votação para Presidente, com os componentes descritos pelo TSE para 2026: barra de progresso, fonte Atkinson Hyperlegible, intérprete de Libras e teclado com braile. Candidatos e partidos são fictícios.</p>
+  </div>
+
+  <div class="controls">
+    <label>Tema
+      <select id="ctl-theme">
+        <option value="tse">Fiel à urna (clara)</option>
+        <option value="contraste">Alto contraste (escura)</option>
+      </select>
+    </label>
+    <label>Progresso
+      <select id="ctl-progresso">
+        <option value="completa">6 etapas completas</option>
+        <option value="presidente">Somente Presidente</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="ctl-libras" checked> Libras</label>
+    <label><input type="checkbox" id="ctl-som" checked> Som</label>
+    <label><input type="checkbox" id="ctl-teclas" checked> Teclado físico</label>
+    <button type="button" class="btn" id="ctl-reset">Reiniciar</button>
+  </div>
+
+  <div class="urna-wrap">
+    <div id="urna-root"></div>
+  </div>
+
+  <p style="font-size:12.5px;color:var(--color-neutral-400);max-width:680px">
+    Cola para testar: números <b>37</b>, <b>48</b>, <b>61</b> ou <b>84</b> retornam um candidato fictício;
+    qualquer outro número de 2 dígitos gera voto nulo. BRANCO exige o campo vazio.
+  </p>
+</main>
+
+<script>
+async function boot() {
+  const pyodide = await loadPyodide();
+  window.__pyodide = pyodide;
+
+  const resp = await fetch('./urna.py');
+  const code = await resp.text();
+  pyodide.FS.writeFile('/urna.py', code);
+
+  await pyodide.runPythonAsync(`
+import sys
+sys.path.insert(0, '/')
+import urna
+`);
+
+  const state = { theme: 'tse', progresso: 'completa', libras: true, som: true, teclas: true };
+
+  function mount() {
+    const urnaMod = pyodide.pyimport('urna');
+    if (window.__urnaInstance) {
+      window.__urnaInstance.destroy();
+    }
+    window.__urnaInstance = urnaMod.mount(
+      '#urna-root',
+      pyodide.toPy({
+        theme: state.theme,
+        teclado: true,
+        teclas: state.teclas,
+        progresso: state.progresso,
+        libras: state.libras,
+        som: state.som,
+      })
+    );
+  }
+
+  mount();
+
+  document.getElementById('ctl-theme').addEventListener('change', (e) => {
+    state.theme = e.target.value;
+    mount();
+  });
+  document.getElementById('ctl-progresso').addEventListener('change', (e) => {
+    state.progresso = e.target.value;
+    mount();
+  });
+  document.getElementById('ctl-libras').addEventListener('change', (e) => {
+    state.libras = e.target.checked;
+    mount();
+  });
+  document.getElementById('ctl-som').addEventListener('change', (e) => {
+    state.som = e.target.checked;
+    mount();
+  });
+  document.getElementById('ctl-teclas').addEventListener('change', (e) => {
+    state.teclas = e.target.checked;
+    mount();
+  });
+  document.getElementById('ctl-reset').addEventListener('click', () => {
+    window.__urnaInstance.reset();
+  });
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('page').classList.remove('hidden');
+}
+
+boot();
+</script>
+</body>
+</html>
