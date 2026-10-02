@@ -149,6 +149,14 @@ class Mesario:
 
     # ---- entrada ----
     def digit(self, d):
+        if self.fase == 'menu':
+            # Real hardware: the menu options are picked with the same
+            # numeric keypad, by the number shown next to each option —
+            # not a mouse click on an on-screen button.
+            opcao = next((o['id'] for o in MENU_OPCOES if o['n'] == d), None)
+            if opcao:
+                self.escolher_menu(opcao)
+            return
         if self.fase in ('ident', 'ano', 'registro_mesarios', 'encerrar_titulo', 'suspensao_titulo'):
             limite = 4 if self.fase == 'ano' else 12
             if len(self.campo) < limite:
