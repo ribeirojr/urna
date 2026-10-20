@@ -123,6 +123,17 @@ def numeros(ano):
     return [c['num'] for c in get(ano)['cands']]
 
 
+def kicker(ano):
+    """O texto do kicker da página. Retorna str (não dict/list) para que o
+    JS não precise gerenciar — nem destruir — um PyProxy."""
+    return get(ano)['kicker']
+
+
+def numeros_label(ano):
+    """'<b>37</b> e <b>48</b>' — os números do ano, prontos para a dica."""
+    return ' e '.join(f'<b>{c["num"]}</b>' for c in get(ano)['cands'])
+
+
 def secao_label():
     """'Seção 0412 · Zona 014' — como aparece nos recibos e na tela."""
     return f'Seção {SECAO["secao"]} · Zona {SECAO["zona"]}'

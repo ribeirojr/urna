@@ -10,15 +10,39 @@
 <body>
 
 <div id="loading">
-  <div class="spinner"></div>
-  <span>Carregando Python (Pyodide)…</span>
+  <svg class="splash-urna" viewBox="0 0 120 86" aria-hidden="true">
+    <!-- cabinet: screen panel raised on the left, keypad deck on the right,
+         same silhouette as the real terminal in .shell -->
+    <path class="su-case" d="M4 78 L14 20 Q15 14 21 14 L99 14 Q105 14 106 20 L116 78 Q117 82 112 82 L8 82 Q3 82 4 78 Z"/>
+    <rect class="su-bezel" x="16" y="20" width="52" height="40" rx="3"/>
+    <rect class="su-screen" x="19" y="23" width="46" height="34" rx="2"/>
+    <g class="su-keys">
+      <rect x="78" y="24" width="8" height="7" rx="1.5"/>
+      <rect x="89" y="24" width="8" height="7" rx="1.5"/>
+      <rect x="100" y="24" width="8" height="7" rx="1.5"/>
+      <rect x="79" y="34" width="8" height="7" rx="1.5"/>
+      <rect x="90" y="34" width="8" height="7" rx="1.5"/>
+      <rect x="101" y="34" width="8" height="7" rx="1.5"/>
+      <rect x="80" y="44" width="8" height="7" rx="1.5"/>
+      <rect x="91" y="44" width="8" height="7" rx="1.5"/>
+      <rect x="102" y="44" width="8" height="7" rx="1.5"/>
+      <rect x="81" y="54" width="8" height="7" rx="1.5"/>
+      <rect x="92" y="54" width="8" height="7" rx="1.5"/>
+      <rect x="103" y="54" width="8" height="7" rx="1.5"/>
+    </g>
+    <rect class="su-branco" x="18" y="64" width="20" height="6" rx="1.5"/>
+    <rect class="su-corrige" x="42" y="65" width="20" height="6" rx="1.5"/>
+    <rect class="su-confirma" x="66" y="66" width="24" height="6" rx="1.5"/>
+  </svg>
+  <span class="splash-text">Carregando a urna…</span>
+  <span class="splash-sub">Python · Pyodide</span>
 </div>
 
 <main class="page hidden" id="page">
   <div class="hero">
-    <span class="kicker">Estudo de interface · Eleições Gerais 2026 · 1º turno</span>
+    <span class="kicker" id="hero-kicker">Estudo de interface · 2º turno hipotético de 2026 · candidatos fictícios</span>
     <h1>Urna eletrônica — voto para Presidente da República</h1>
-    <p>Simulação em Python (via Pyodide, rodando no navegador) da tela de votação para Presidente, com os componentes descritos pelo TSE para 2026: barra de progresso, fonte Atkinson Hyperlegible, intérprete de Libras e teclado com braile. Candidatos e partidos são fictícios.</p>
+    <p>Simulação em Python (via Pyodide, rodando no navegador) da tela de votação para Presidente no <b>2º turno</b>, com os componentes descritos pelo TSE para 2026: barra de progresso, fonte Atkinson Hyperlegible, intérprete de Libras e teclado com braile. O seletor cobre o segundo turno de cada eleição presidencial realizada em urna eletrônica — os anos são reais, os candidatos e partidos são fictícios.</p>
   </div>
 
   <nav class="tabs" role="tablist">
@@ -29,22 +53,27 @@
 
   <section class="tab-panel" id="tab-votar" role="tabpanel">
     <div class="controls">
+      <label>Eleição
+        <select id="ctl-eleicao">
+          <option value="2026">2026 · 2º turno</option>
+          <option value="2022">2022 · 2º turno</option>
+          <option value="2018">2018 · 2º turno</option>
+          <option value="2014">2014 · 2º turno</option>
+          <option value="2010">2010 · 2º turno</option>
+          <option value="2006">2006 · 2º turno</option>
+          <option value="2002">2002 · 2º turno</option>
+        </select>
+      </label>
       <label>Tema
         <select id="ctl-theme">
           <option value="tse">Fiel à urna (clara)</option>
           <option value="contraste">Alto contraste (escura)</option>
         </select>
       </label>
-      <label>Progresso
-        <select id="ctl-progresso">
-          <option value="completa">6 etapas completas</option>
-          <option value="presidente">Somente Presidente</option>
-        </select>
-      </label>
       <label><input type="checkbox" id="ctl-libras" checked> Libras</label>
       <label><input type="checkbox" id="ctl-som" checked> Som</label>
       <label><input type="checkbox" id="ctl-teclas" checked> Teclado físico</label>
-      <label><input type="checkbox" id="ctl-vinculada" checked> Vinculada ao mesário</label>
+      <label><input type="checkbox" id="ctl-vinculada"> Vinculada ao mesário</label>
       <button type="button" class="btn" id="ctl-reset">Reiniciar</button>
     </div>
 
@@ -59,13 +88,23 @@
       </div>
     </div>
 
+    <div class="unlock-prompt hidden" id="unlock-prompt">
+      <div class="unlock-body">
+        <span class="unlock-title">Esse voto foi livre.</span>
+        <span class="unlock-text">Numa seção real a urna fica travada: um mesário identifica cada
+          eleitor no terminal ao lado — título ou CPF, depois biometria — e só então libera o
+          teclado para um único voto.</span>
+      </div>
+      <button type="button" class="btn" id="unlock-btn">Abrir seção com mesário</button>
+    </div>
+
     <p style="font-size:12.5px;color:var(--color-neutral-400);max-width:680px">
       Com "Vinculada ao mesário" marcado, a urna fica à espera até o mesário identificar o eleitor
       (CPF/título de exemplo + leitor biométrico — "Simular falha na digital" 4× cai para o ano de
       nascimento) e liberar o voto; a urna então trava de volta ao concluir. Desmarcado, a urna vota
-      livremente, como antes.<br>
-      Cola para testar: números <b>37</b>, <b>48</b>, <b>61</b> ou <b>84</b> retornam um candidato fictício;
-      qualquer outro número de 2 dígitos gera voto nulo. BRANCO exige o campo vazio.
+      livremente.<br>
+      Cola para testar: no 2º turno só dois números existem — <b id="hint-nums">37</b> retornam um
+      candidato fictício; qualquer outro número de 2 dígitos gera voto nulo. BRANCO exige o campo vazio.
     </p>
   </section>
 
@@ -109,7 +148,7 @@
             <span class="step-num"></span>
             <div class="step-body">
               <span class="step-title">Votação na cabine, sozinho</span>
-              <span class="step-desc">O eleitor vota em ordem fixa definida pelo TSE: deputado federal (4 dígitos) → deputado estadual/distrital (5) → senador (3 — em 2026, duas vagas em disputa, portanto dois votos de senador) → governador (2) → presidente (2, última etapa).</span>
+              <span class="step-desc">No 1º turno o eleitor vota em ordem fixa definida pelo TSE: deputado federal (4 dígitos) → deputado estadual/distrital (5) → senador (3 — em 2026, duas vagas em disputa, portanto dois votos de senador) → governador (2) → presidente (2, última etapa). <b>No 2º turno — o cenário simulado aqui — a cédula tem um cargo só</b>: dois dígitos para Presidente, com apenas os dois candidatos mais votados, e a barra de progresso mostra uma única etapa.</span>
             </div>
           </div>
           <div class="step">
@@ -123,7 +162,7 @@
             <span class="step-num"></span>
             <div class="step-body">
               <span class="step-title">"FIM"</span>
-              <span class="step-desc">Depois do último cargo (presidente), a tela mostra "FIM" e a urna trava novamente até o mesário liberar o próximo eleitor.</span>
+              <span class="step-desc">Depois do último cargo — no 2º turno, o único — a tela mostra "FIM" e a urna trava novamente até o mesário liberar o próximo eleitor.</span>
             </div>
           </div>
         </div>
@@ -200,7 +239,7 @@ async function boot() {
   const pyodide = await loadPyodide();
   window.__pyodide = pyodide;
 
-  for (const mod of ['urna', 'mesario']) {
+  for (const mod of ['eleicoes', 'urna', 'mesario']) {
     const resp = await fetch(`./${mod}.py`);
     const code = await resp.text();
     pyodide.FS.writeFile(`/${mod}.py`, code);
@@ -209,14 +248,20 @@ async function boot() {
   await pyodide.runPythonAsync(`
 import sys
 sys.path.insert(0, '/')
+import eleicoes
 import urna
 import mesario
 `);
 
+  const eleicoesMod = pyodide.pyimport('eleicoes');
+
   const state = {
-    theme: 'tse', progresso: 'completa', libras: true, som: true, teclas: true,
-    vinculada: true,
+    eleicao: eleicoesMod.DEFAULT, theme: 'tse', libras: true, som: true, teclas: true,
+    // The page opens as the urna alone: the paired mesário view is offered
+    // once a first vote has shown what the machine does on its own.
+    vinculada: false,
   };
+  let unlockOffered = false;
 
   function mountUrna() {
     const urnaMod = pyodide.pyimport('urna');
@@ -227,10 +272,10 @@ import mesario
         theme: state.theme,
         teclado: true,
         teclas: state.teclas,
-        progresso: state.progresso,
         libras: state.libras,
         som: state.som,
         vinculada: state.vinculada,
+        ano: state.eleicao,
       })
     );
   }
@@ -238,7 +283,10 @@ import mesario
   function mountMesario() {
     const mesarioMod = pyodide.pyimport('mesario');
     if (window.__mesarioInstance) window.__mesarioInstance.destroy();
-    window.__mesarioInstance = mesarioMod.mount('#mesario-root', pyodide.toPy({ teclado: true }));
+    window.__mesarioInstance = mesarioMod.mount(
+      '#mesario-root',
+      pyodide.toPy({ teclado: true, ano: state.eleicao })
+    );
   }
 
   function mountAll() {
@@ -254,16 +302,48 @@ import mesario
     }
   }
 
+  // Both helpers return plain strings, so there is no PyProxy to destroy.
+  function syncEleicaoUI() {
+    document.getElementById('hero-kicker').textContent = eleicoesMod.kicker(state.eleicao);
+    document.getElementById('hint-nums').innerHTML = eleicoesMod.numeros_label(state.eleicao);
+  }
+
+  // Shown once, after the first completed vote: the mesário terminal makes
+  // more sense as "here is what was missing" than as one more checkbox to
+  // find before anything has happened on screen.
+  function offerMesario() {
+    if (unlockOffered || state.vinculada) return;
+    unlockOffered = true;
+    document.getElementById('unlock-prompt').classList.remove('hidden');
+  }
+
+  window.addEventListener('urna-fim', offerMesario);
+
+  function enableMesario() {
+    state.vinculada = true;
+    document.getElementById('ctl-vinculada').checked = true;
+    document.getElementById('unlock-prompt').classList.add('hidden');
+    syncVinculadaUI();
+    mountAll();
+  }
+
+  document.getElementById('unlock-btn').addEventListener('click', enableMesario);
+
   syncVinculadaUI();
+  syncEleicaoUI();
   mountAll();
 
   document.getElementById('ctl-theme').addEventListener('change', (e) => {
     state.theme = e.target.value;
     mountUrna();
   });
-  document.getElementById('ctl-progresso').addEventListener('change', (e) => {
-    state.progresso = e.target.value;
-    mountUrna();
+  document.getElementById('ctl-eleicao').addEventListener('change', (e) => {
+    state.eleicao = e.target.value;
+    syncEleicaoUI();
+    // Full remount of both terminals: switching election has to drop any
+    // half-typed number, the running tally and the printed receipts, which
+    // all belong to the election being left behind.
+    mountAll();
   });
   document.getElementById('ctl-libras').addEventListener('change', (e) => {
     state.libras = e.target.checked;
@@ -279,6 +359,10 @@ import mesario
   });
   document.getElementById('ctl-vinculada').addEventListener('change', (e) => {
     state.vinculada = e.target.checked;
+    if (state.vinculada) {
+      unlockOffered = true;
+      document.getElementById('unlock-prompt').classList.add('hidden');
+    }
     syncVinculadaUI();
     mountAll();
   });
