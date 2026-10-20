@@ -1,23 +1,16 @@
 """
-Urna Eletronica 2026 — voting-machine screen simulator (Presidente only),
-driven entirely from Python running in Pyodide. Mirrors the design mockup's
-state machine: digit entry -> candidate lookup / null vote / blank vote -> confirm -> fim.
+Urna Eletronica — voting-machine screen simulator for a presidential runoff
+(2º turno: a single cargo, two candidates), driven entirely from Python
+running in Pyodide. Mirrors the design mockup's state machine: digit entry ->
+candidate lookup / null vote / blank vote -> confirm -> fim.
+
+Which election is on screen comes from `eleicoes.py` via the `ano` option, so
+the same terminal renders any of the runoffs in the page's selector.
 """
 from js import document, window
 from pyodide.ffi import create_proxy, to_js
 
-CANDS = {
-    '37': {'num': '37', 'nome': 'Helena Duarte Ramos', 'partido': 'PRV', 'vice': 'Otávio Lins Barreto',
-           'gender': 'f', 'gender_vice': 'm'},
-    '48': {'num': '48', 'nome': 'Marcos Tavares Albuquerque', 'partido': 'MNB', 'vice': 'Cecília Prado',
-           'gender': 'm', 'gender_vice': 'f'},
-    '61': {'num': '61', 'nome': 'Joana Sato Ferreira', 'partido': 'PDA', 'vice': 'Ricardo Menezes',
-           'gender': 'f', 'gender_vice': 'm'},
-    '84': {'num': '84', 'nome': 'Paulo Henrique Costa', 'partido': 'UCT', 'vice': 'Lúcia Andrade',
-           'gender': 'm', 'gender_vice': 'f'},
-}
-
-STEPS = ['Dep. Federal', 'Dep. Estadual', 'Senador 1ª', 'Senador 2ª', 'Governador', 'Presidente']
+import eleicoes
 
 BRAILLE = {'1': '⠁', '2': '⠃', '3': '⠉', '4': '⠙', '5': '⠑', '6': '⠋', '7': '⠛', '8': '⠓', '9': '⠊', '0': '⠚'}
 
@@ -81,15 +74,17 @@ def photo_html(cls, src, alt, caption):
 
 class Urna:
     def __init__(self, root, theme='tse', teclado=True, teclas=True,
-                 progresso='completa', libras=True, som=True, vinculada=False):
+                 libras=True, som=True, vinculada=False, ano=None):
         self.root = root
         self.theme = theme
         self.teclado = teclado
         self.teclas = teclas
-        self.progresso = progresso
         self.libras = libras
         self.som = som
         self.vinculada = vinculada
+
+        self.eleicao = eleicoes.get(ano or eleicoes.DEFAULT)
+        self.cands = eleicoes.cands_map(self.eleicao['ano'])
 
         self.num = ''
         self.branco = False
@@ -254,9 +249,12 @@ class Urna:
             self.fim = True
             if self.vinculada:
                 self.liberada = False
-                resultado = 'branco' if self.branco else (self.num if self.num in CANDS else 'nulo')
-                detail = to_js({'detail': {'resultado': resultado}}, dict_converter=window.Object.fromEntries)
-                window.dispatchEvent(window.CustomEvent.new('urna-fim', detail))
+            # Announced even when voting freely (not vinculada): the page uses
+            # this to offer the mesário terminal after the first vote, and the
+            # mesário itself ignores the event unless it is mid-votação.
+            resultado = 'branco' if self.branco else (self.num if self.num in self.cands else 'nulo')
+            detail = to_js({'detail': {'resultado': resultado}}, dict_converter=window.Object.fromEntries)
+            window.dispatchEvent(window.CustomEvent.new('urna-fim', detail))
         self.render()
 
     def reset(self):
@@ -289,36 +287,27 @@ class Urna:
         num, branco, fim = self.num, self.branco, self.fim
         espera = self.vinculada and not self.liberada and not fim
 
-        cand = CANDS.get(num) if len(num) == 2 else None
+        cand = self.cands.get(num) if len(num) == 2 else None
         is_cand = bool(cand) and not fim
         is_nulo = len(num) == 2 and not cand and not fim
         is_branco = branco and not fim
 
-        labels = ['Presidente'] if self.progresso == 'presidente' else STEPS
-        steps_html = []
-        n = len(labels)
-        for i, label in enumerate(labels):
-            last = i == n - 1
-            done = fim or not last
-            current = (not fim) and last
-            if done:
-                bar = theme['--s-ink']
-                txt = f'✓ {esc(label)}'
-                extra = f"color:{theme['--s-muted']}"
-            elif current:
-                bar = theme['--s-accent']
-                txt = f'● {esc(label)}'
-                extra = f"color:{theme['--s-ink']};font-weight:700"
-            else:
-                bar = theme['--s-line']
-                txt = esc(label)
-                extra = f"color:{theme['--s-muted']}"
-            steps_html.append(
-                f'<div class="progress-col">'
-                f'<div class="progress-bar" style="background:{bar}"></div>'
-                f'<div class="progress-label" style="{extra}">{txt}</div>'
-                f'</div>'
-            )
+        # A runoff ballot has a single cargo, so the progress bar is one step:
+        # in progress while voting, done at FIM.
+        if fim:
+            bar = theme['--s-ink']
+            txt = '✓ Presidente'
+            extra = f"color:{theme['--s-muted']}"
+        else:
+            bar = theme['--s-accent']
+            txt = '● Presidente'
+            extra = f"color:{theme['--s-ink']};font-weight:700"
+        steps_html = [
+            f'<div class="progress-col">'
+            f'<div class="progress-bar" style="background:{bar}"></div>'
+            f'<div class="progress-label" style="{extra}">{txt}</div>'
+            f'</div>'
+        ]
 
         d1 = num[0] if len(num) > 0 else ''
         d2 = num[1] if len(num) > 1 else ''
@@ -344,7 +333,8 @@ class Urna:
                 '<span class="espera-title">JUSTIÇA ELEITORAL</span>'
                 '</div>'
                 '<div class="espera-footer">'
-                '<span>Zona ZZ · Seção 0412</span><span>Lisboa · Portugal</span>'
+                f'<span>{esc(eleicoes.secao_label())}</span>'
+                f'<span>{esc(eleicoes.SECAO["local"])}</span>'
                 '</div>'
             )
         elif fim:
@@ -490,7 +480,7 @@ class Urna:
 
 def mount(selector, opts=None):
     """opts: a Python dict (pass pyodide.toPy({...}) from JS) with
-    theme/teclado/teclas/progresso/libras/som."""
+    theme/teclado/teclas/libras/som/vinculada/ano."""
     root = document.querySelector(selector)
     kwargs = dict(opts) if opts else {}
     return Urna(root, **kwargs)
