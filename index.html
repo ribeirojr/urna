@@ -75,6 +75,7 @@
       <label><input type="checkbox" id="ctl-teclas" checked> Teclado físico</label>
       <label><input type="checkbox" id="ctl-vinculada"> Vinculada ao mesário</label>
       <button type="button" class="btn" id="ctl-reset">Reiniciar</button>
+      <button type="button" class="btn" id="ctl-fullscreen">Tela cheia</button>
     </div>
 
     <div class="urna-wrap">
@@ -82,9 +83,10 @@
         <span class="terminal-label" id="lbl-mesario">Terminal do mesário</span>
         <div id="mesario-root"></div>
       </div>
-      <div class="terminal-col">
+      <div class="terminal-col" id="urna-col">
         <span class="terminal-label">Urna do eleitor</span>
         <div id="urna-root"></div>
+        <button type="button" class="fs-exit" id="fs-exit">Sair da tela cheia · Esc</button>
       </div>
     </div>
 
@@ -369,6 +371,82 @@ import mesario
   document.getElementById('ctl-reset').addEventListener('click', () => {
     if (window.__urnaInstance) window.__urnaInstance.reset();
   });
+
+  // Fullscreen: only the urna, no page chrome. The element is fullscreened
+  // as-is rather than remounted, so a vote in progress survives the switch.
+  // .shell is a fixed-size layout (640px screen + 288px keyboard), so it is
+  // scaled with a transform to keep the machine's real proportions instead
+  // of reflowing it.
+  const urnaCol = document.getElementById('urna-col');
+
+  function fsElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  // Scales #urna-root, not the .shell inside it: urna.py rewrites its root's
+  // innerHTML on every render, so a transform set on .shell would be thrown
+  // away by the next keypress. The root element itself is never replaced.
+  const urnaRoot = document.getElementById('urna-root');
+
+  function fitUrna() {
+    if (fsElement() !== urnaCol) {
+      urnaRoot.style.transform = '';
+      urnaRoot.style.height = '';
+      return;
+    }
+    const shell = urnaRoot.querySelector('.shell');
+    if (!shell) return;
+    // Measure untransformed, then scale to the viewport with a margin, never
+    // magnifying past 2x (beyond that the candidate photos go soft).
+    urnaRoot.style.transform = '';
+    urnaRoot.style.height = '';
+    const r = shell.getBoundingClientRect();
+    const scale = Math.min(
+      (window.innerWidth - 48) / r.width,
+      (window.innerHeight - 112) / r.height,
+      2
+    );
+    urnaRoot.style.transformOrigin = 'top center';
+    urnaRoot.style.transform = `scale(${scale})`;
+    // Transforms do not affect layout, so reserve the scaled height to keep
+    // the exit button clear of the machine.
+    urnaRoot.style.height = `${r.height * scale}px`;
+  }
+
+  function toggleFullscreen() {
+    if (fsElement() === urnaCol) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else {
+      const req = urnaCol.requestFullscreen || urnaCol.webkitRequestFullscreen;
+      if (!req) return;
+      Promise.resolve(req.call(urnaCol)).catch(() => {});
+    }
+  }
+
+  document.getElementById('ctl-fullscreen').addEventListener('click', toggleFullscreen);
+  document.getElementById('fs-exit').addEventListener('click', toggleFullscreen);
+
+  function onFsChange() {
+    const on = fsElement() === urnaCol;
+    urnaCol.classList.toggle('fs-on', on);
+    document.getElementById('ctl-fullscreen').textContent = on ? 'Sair da tela cheia' : 'Tela cheia';
+    fitUrna();
+  }
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
+  window.addEventListener('resize', fitUrna);
+
+  // The shell's size is not constant: printed receipts stack above the
+  // cabinet and the keyboard hint row comes and goes. Re-fit whenever the
+  // rendered content changes size, so the machine always fills the screen.
+  if (window.ResizeObserver) {
+    let fitting = false;
+    new ResizeObserver(() => {
+      if (fitting) return;          // our own transform must not re-trigger
+      fitting = true;
+      requestAnimationFrame(() => { fitUrna(); fitting = false; });
+    }).observe(urnaRoot);
+  }
 
   document.getElementById('loading').style.display = 'none';
   document.getElementById('page').classList.remove('hidden');
