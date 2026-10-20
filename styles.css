@@ -42,6 +42,31 @@
 
   --shadow-sm: 0 0 0 1px #3f424d;
   --shadow-md: 0 0 0 1px #595d6c, 0 6px 18px rgba(0,0,0,0.55);
+
+  /* The flag backdrop, shared by the splash and the fullscreen urna.
+     Three diagonal bands in the flag's own colours (Pantone 356 / 109 /
+     661) at 60% over the page background, green taking the majority.
+     135deg runs the bands from the top-left down to the bottom-right, so
+     they read as a 45° tilt on screen. */
+  --flag-green: #009739;
+  --flag-yellow: #fedd00;
+  --flag-blue: #012169;
+  --flag-bands: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--flag-green) 60%, var(--color-bg)) 0 56%,
+    color-mix(in srgb, var(--flag-yellow) 60%, var(--color-bg)) 56% 78%,
+    color-mix(in srgb, var(--flag-blue) 60%, var(--color-bg)) 78% 100%
+  );
+  /* A wide, soft vignette: at 60% the yellow band alone leaves light text
+     at ~1.6:1, so the middle is darkened while the bands keep their
+     colour. Layered above --flag-bands, never instead of it. */
+  --flag-veil: radial-gradient(
+    ellipse 90% 58% at 50% 50%,
+    color-mix(in srgb, var(--color-bg) 88%, transparent) 0%,
+    color-mix(in srgb, var(--color-bg) 70%, transparent) 38%,
+    color-mix(in srgb, var(--color-bg) 30%, transparent) 72%,
+    transparent 100%
+  );
 }
 
 html, body { background: var(--color-bg); }
@@ -65,24 +90,7 @@ a:hover { color: var(--color-accent-200); }
   flex-direction: column; gap: 4px;
   font: 500 13px var(--font-body); color: var(--color-neutral-400);
   letter-spacing: .04em; text-transform: uppercase;
-  background:
-    /* A soft dark vignette over the middle: the 60% yellow band is bright
-       enough to leave the status text at ~1.6:1 contrast, and the text sits
-       right on it. This keeps the flag colours at full strength and darkens
-       only what is behind the urna and the text. */
-    radial-gradient(
-      ellipse 90% 58% at 50% 50%,
-      color-mix(in srgb, var(--color-bg) 88%, transparent) 0%,
-      color-mix(in srgb, var(--color-bg) 70%, transparent) 38%,
-      color-mix(in srgb, var(--color-bg) 30%, transparent) 72%,
-      transparent 100%
-    ),
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, #009739 60%, var(--color-bg)) 0 33%,
-      color-mix(in srgb, #fedd00 60%, var(--color-bg)) 34% 66%,
-      color-mix(in srgb, #012169 60%, var(--color-bg)) 67% 100%
-    );
+  background: var(--flag-veil), var(--flag-bands);
 }
 /* Lighter than the page default: this text sits over the flag bands, not
    over the plain background. */
@@ -444,8 +452,8 @@ a:hover { color: var(--color-accent-200); }
    unknown, so the standard and -webkit- forms are kept in separate blocks
    and must stay that way. Shared declarations live in .fs-on, which the
    JS toggles on the same element. */
-#urna-col:fullscreen { background: var(--color-bg); }
-#urna-col:-webkit-full-screen { background: var(--color-bg); }
+#urna-col:fullscreen { background: var(--flag-veil), var(--flag-bands); }
+#urna-col:-webkit-full-screen { background: var(--flag-veil), var(--flag-bands); }
 
 #urna-col.fs-on {
   width: 100%; height: 100%;
@@ -459,16 +467,18 @@ a:hover { color: var(--color-accent-200); }
 #urna-col.fs-on .terminal-label { display: none; }
 
 .fs-exit { display: none; }
+/* Opaque, not translucent: this button sits over the flag bands, and a
+   see-through background let the yellow band through at ~3:1 contrast. */
 #urna-col.fs-on .fs-exit {
   display: block; margin-top: 18px;
   border: 0; border-radius: var(--radius-sm); cursor: pointer;
-  background: color-mix(in srgb, var(--color-text) 8%, transparent);
-  color: var(--color-neutral-300);
+  background: color-mix(in srgb, var(--color-bg) 88%, var(--color-text));
+  color: var(--color-neutral-200);
   font: 500 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase;
   padding: 9px 14px;
 }
 #urna-col.fs-on .fs-exit:hover {
-  background: color-mix(in srgb, var(--color-text) 15%, transparent);
+  background: color-mix(in srgb, var(--color-bg) 75%, var(--color-text));
   color: var(--color-text);
 }
 
