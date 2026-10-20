@@ -16,23 +16,23 @@
     <path class="su-case" d="M4 78 L14 20 Q15 14 21 14 L99 14 Q105 14 106 20 L116 78 Q117 82 112 82 L8 82 Q3 82 4 78 Z"/>
     <rect class="su-bezel" x="16" y="20" width="52" height="40" rx="3"/>
     <rect class="su-screen" x="19" y="23" width="46" height="34" rx="2"/>
+    <!-- keypad: 1-9 in a 3x3 grid, 0 centered below, then the BRANCO /
+         CORRIGE / CONFIRMA row — the same order as the real keyboard -->
     <g class="su-keys">
-      <rect x="75" y="24" width="8" height="7" rx="1.5"/>
-      <rect x="86" y="24" width="8" height="7" rx="1.5"/>
-      <rect x="97" y="24" width="8" height="7" rx="1.5"/>
-      <rect x="76" y="34" width="8" height="7" rx="1.5"/>
-      <rect x="87" y="34" width="8" height="7" rx="1.5"/>
-      <rect x="98" y="34" width="8" height="7" rx="1.5"/>
-      <rect x="77" y="44" width="8" height="7" rx="1.5"/>
-      <rect x="88" y="44" width="8" height="7" rx="1.5"/>
-      <rect x="99" y="44" width="8" height="7" rx="1.5"/>
-      <rect x="78" y="54" width="8" height="7" rx="1.5"/>
-      <rect x="89" y="54" width="8" height="7" rx="1.5"/>
-      <rect x="100" y="54" width="8" height="7" rx="1.5"/>
+      <rect x="75" y="22" width="8" height="7" rx="1.5"/>
+      <rect x="86" y="22" width="8" height="7" rx="1.5"/>
+      <rect x="97" y="22" width="8" height="7" rx="1.5"/>
+      <rect x="76" y="32" width="8" height="7" rx="1.5"/>
+      <rect x="87" y="32" width="8" height="7" rx="1.5"/>
+      <rect x="98" y="32" width="8" height="7" rx="1.5"/>
+      <rect x="77" y="42" width="8" height="7" rx="1.5"/>
+      <rect x="88" y="42" width="8" height="7" rx="1.5"/>
+      <rect x="99" y="42" width="8" height="7" rx="1.5"/>
+      <rect x="89" y="52" width="8" height="7" rx="1.5"/>
     </g>
-    <rect class="su-branco" x="18" y="64" width="20" height="6" rx="1.5"/>
-    <rect class="su-corrige" x="42" y="65" width="20" height="6" rx="1.5"/>
-    <rect class="su-confirma" x="66" y="66" width="24" height="6" rx="1.5"/>
+    <rect class="su-branco" x="78" y="63" width="9" height="6" rx="1.5"/>
+    <rect class="su-corrige" x="90" y="63" width="9" height="6" rx="1.5"/>
+    <rect class="su-confirma" x="102" y="63" width="11" height="6" rx="1.5"/>
   </svg>
   <span class="splash-text">Carregando a urna…</span>
   <span class="splash-sub">Python · Pyodide</span>
@@ -399,17 +399,22 @@ import mesario
     // Measure untransformed, then scale to the viewport with a margin, never
     // magnifying past 2x (beyond that the candidate photos go soft).
     urnaRoot.style.transform = '';
+    urnaRoot.style.width = '';
     urnaRoot.style.height = '';
     const r = shell.getBoundingClientRect();
     const scale = Math.min(
       (window.innerWidth - 48) / r.width,
-      (window.innerHeight - 112) / r.height,
+      (window.innerHeight - 120) / r.height,
       2
     );
-    urnaRoot.style.transformOrigin = 'top center';
+    // Scale from the top-left and give the root the scaled box as its own
+    // size. A transform does not affect layout, so without this the root
+    // keeps its unscaled size and the magnified shell spills out of it —
+    // and because the column centers its items and clips overflow, what got
+    // cut off was the top of the screen, where the candidate number sits.
+    urnaRoot.style.transformOrigin = 'top left';
     urnaRoot.style.transform = `scale(${scale})`;
-    // Transforms do not affect layout, so reserve the scaled height to keep
-    // the exit button clear of the machine.
+    urnaRoot.style.width = `${r.width * scale}px`;
     urnaRoot.style.height = `${r.height * scale}px`;
   }
 
