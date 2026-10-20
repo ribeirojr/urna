@@ -86,7 +86,21 @@
       <div class="terminal-col" id="urna-col">
         <span class="terminal-label">Urna do eleitor</span>
         <div id="urna-root"></div>
-        <button type="button" class="fs-exit" id="fs-exit">Sair da tela cheia · Esc</button>
+        <div class="fs-help" id="fs-help">
+          <div class="fs-help-panel" id="fs-help-panel" hidden>
+            <span class="fs-help-title">Urna eletrônica</span>
+            <dl class="fs-help-keys">
+              <dt>0–9</dt><dd>digita o número do candidato</dd>
+              <dt>Enter</dt><dd>CONFIRMA</dd>
+              <dt>⌫</dt><dd>CORRIGE</dd>
+              <dt>B</dt><dd>BRANCO</dd>
+            </dl>
+            <button type="button" class="fs-help-exit" id="fs-exit">Sair da tela cheia · Esc</button>
+          </div>
+          <button type="button" class="fs-help-btn" id="fs-help-btn"
+                  aria-expanded="false" aria-controls="fs-help-panel"
+                  aria-label="Ajuda e sair da tela cheia">?</button>
+        </div>
       </div>
     </div>
 
@@ -402,9 +416,11 @@ import mesario
     urnaRoot.style.width = '';
     urnaRoot.style.height = '';
     const r = shell.getBoundingClientRect();
+    // The vertical margin leaves the bottom-right corner clear for the help
+    // bubble, so the machine is never scaled right up under it.
     const scale = Math.min(
       (window.innerWidth - 48) / r.width,
-      (window.innerHeight - 120) / r.height,
+      (window.innerHeight - 104) / r.height,
       2
     );
     // Scale from the top-left and give the root the scaled box as its own
@@ -431,10 +447,30 @@ import mesario
   document.getElementById('ctl-fullscreen').addEventListener('click', toggleFullscreen);
   document.getElementById('fs-exit').addEventListener('click', toggleFullscreen);
 
+  const helpBtn = document.getElementById('fs-help-btn');
+  const helpPanel = document.getElementById('fs-help-panel');
+
+  function setHelp(open) {
+    helpPanel.hidden = !open;
+    helpBtn.setAttribute('aria-expanded', String(open));
+    helpBtn.textContent = open ? '×' : '?';
+  }
+
+  helpBtn.addEventListener('click', () => setHelp(helpPanel.hidden));
+
+  // Click outside the bubble closes the panel. Esc is left to the browser,
+  // which uses it to leave fullscreen entirely.
+  document.addEventListener('click', (e) => {
+    if (!helpPanel.hidden && !document.getElementById('fs-help').contains(e.target)) {
+      setHelp(false);
+    }
+  });
+
   function onFsChange() {
     const on = fsElement() === urnaCol;
     urnaCol.classList.toggle('fs-on', on);
     document.getElementById('ctl-fullscreen').textContent = on ? 'Sair da tela cheia' : 'Tela cheia';
+    setHelp(false);   // never reopen fullscreen with the panel left hanging
     fitUrna();
   }
   document.addEventListener('fullscreenchange', onFsChange);

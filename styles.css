@@ -466,19 +466,68 @@ a:hover { color: var(--color-accent-200); }
 #urna-col.fs-on #urna-root { flex: none; }
 #urna-col.fs-on .terminal-label { display: none; }
 
-.fs-exit { display: none; }
-/* Opaque, not translucent: this button sits over the flag bands, and a
-   see-through background let the yellow band through at ~3:1 contrast. */
-#urna-col.fs-on .fs-exit {
-  display: block; margin-top: 18px;
-  border: 0; border-radius: var(--radius-sm); cursor: pointer;
-  background: color-mix(in srgb, var(--color-bg) 88%, var(--color-text));
-  color: var(--color-neutral-200);
-  font: 500 11px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase;
-  padding: 9px 14px;
+.fs-help { display: none; }
+/* The help bubble floats in the corner rather than sitting in the column's
+   flow: out of flow it takes no layout height, so the urna gets the whole
+   viewport to scale into instead of being pushed up by a button.
+   Backgrounds here are opaque — these controls sit over the flag bands,
+   and a translucent one let the yellow through at ~3:1 against its text. */
+#urna-col.fs-on .fs-help {
+  position: fixed; right: 22px; bottom: 22px; z-index: 10;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
 }
-#urna-col.fs-on .fs-exit:hover {
-  background: color-mix(in srgb, var(--color-bg) 75%, var(--color-text));
+
+.fs-help-btn {
+  width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer;
+  background: color-mix(in srgb, var(--color-bg) 85%, var(--color-text));
+  color: var(--color-neutral-200);
+  font: 600 17px/1 var(--font-body);
+  box-shadow: 0 4px 14px rgba(0,0,0,.45);
+  transition: background .15s ease, color .15s ease, transform .15s ease;
+}
+.fs-help-btn:hover {
+  background: color-mix(in srgb, var(--color-bg) 68%, var(--color-text));
+  color: var(--color-text); transform: translateY(-1px);
+}
+.fs-help-btn:focus-visible { outline: 2px solid var(--color-accent-400); outline-offset: 3px; }
+
+/* The urna is scaled to fill the viewport, so this panel always opens over
+   it. A ring and a deep shadow separate it from the cabinet underneath
+   instead of letting it blend into the keypad. */
+.fs-help-panel {
+  display: flex; flex-direction: column; gap: 12px;
+  min-width: 236px; padding: 15px 17px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-bg) 96%, var(--color-text));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-text) 18%, transparent),
+              0 18px 44px rgba(0,0,0,.66);
+}
+.fs-help-panel[hidden] { display: none; }
+.fs-help-title {
+  font: 500 10.5px/1 var(--font-body); letter-spacing: .14em; text-transform: uppercase;
+  color: var(--color-neutral-400);
+}
+.fs-help-keys {
+  display: grid; grid-template-columns: auto 1fr; gap: 7px 12px; margin: 0;
+  align-items: baseline;
+}
+.fs-help-keys dt {
+  justify-self: start;
+  padding: 3px 7px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-text) 13%, transparent);
+  color: var(--color-neutral-200);
+  font: 600 11px/1.15 var(--font-body);
+}
+.fs-help-keys dd { margin: 0; font-size: 12.5px; color: var(--color-neutral-300); }
+.fs-help-exit {
+  border: 0; border-radius: var(--radius-sm); cursor: pointer; width: 100%;
+  background: color-mix(in srgb, var(--color-text) 13%, transparent);
+  color: var(--color-neutral-200);
+  font: 500 10.5px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase;
+  padding: 9px 12px;
+}
+.fs-help-exit:hover {
+  background: color-mix(in srgb, var(--color-text) 22%, transparent);
   color: var(--color-text);
 }
 
