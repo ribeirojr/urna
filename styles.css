@@ -56,16 +56,40 @@ body {
 a { color: var(--color-accent-300); }
 a:hover { color: var(--color-accent-200); }
 
+/* Three vertical bands in the flag's own colours — Pantone 356 / 109 / 661,
+   the green, yellow and blue — laid over the page background at 60% so they
+   read as a tint behind the urna rather than a flag being flown. Hard stops,
+   no gradient between bands, with a soft seam where they meet. */
 #loading {
   position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
   flex-direction: column; gap: 4px;
   font: 500 13px var(--font-body); color: var(--color-neutral-400);
   letter-spacing: .04em; text-transform: uppercase;
+  background:
+    /* A soft dark vignette over the middle: the 60% yellow band is bright
+       enough to leave the status text at ~1.6:1 contrast, and the text sits
+       right on it. This keeps the flag colours at full strength and darkens
+       only what is behind the urna and the text. */
+    radial-gradient(
+      ellipse 90% 58% at 50% 50%,
+      color-mix(in srgb, var(--color-bg) 88%, transparent) 0%,
+      color-mix(in srgb, var(--color-bg) 70%, transparent) 38%,
+      color-mix(in srgb, var(--color-bg) 30%, transparent) 72%,
+      transparent 100%
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, #009739 60%, var(--color-bg)) 0 33%,
+      color-mix(in srgb, #fedd00 60%, var(--color-bg)) 34% 66%,
+      color-mix(in srgb, #012169 60%, var(--color-bg)) 67% 100%
+    );
 }
-.splash-text { margin-top: 14px; }
+/* Lighter than the page default: this text sits over the flag bands, not
+   over the plain background. */
+.splash-text { margin-top: 14px; color: var(--color-text); }
 .splash-sub {
   font: 400 10.5px var(--font-body); letter-spacing: .12em;
-  color: var(--color-neutral-600);
+  color: var(--color-neutral-300);
 }
 
 /* Tiny urna eletrônica standing in for a spinner: the screen warms up and
@@ -80,7 +104,7 @@ a:hover { color: var(--color-accent-200); }
 .splash-urna .su-confirma { fill: oklch(0.68 0.15 150); }
 
 @media (prefers-reduced-motion: no-preference) {
-  .splash-urna .su-screen { animation: splashScreen 2.4s ease-in-out infinite; }
+  .splash-urna .su-screen { animation: splashScreen 2.4s linear infinite; }
   .splash-urna .su-keys rect { animation: splashKey 2.4s steps(1) infinite; }
   /* Stagger across the ten number keys so the light walks the keypad. */
   .splash-urna .su-keys rect:nth-child(1)  { animation-delay: 0s; }
@@ -94,9 +118,13 @@ a:hover { color: var(--color-accent-200); }
   .splash-urna .su-keys rect:nth-child(9)  { animation-delay: .96s; }
   .splash-urna .su-keys rect:nth-child(10) { animation-delay: 1.08s; }
 }
+/* The screen snaps on almost instantly, like a panel backlight striking,
+   then holds lit for the rest of the cycle instead of breathing in and out. */
 @keyframes splashScreen {
-  0%, 100% { fill: var(--color-accent-900); }
-  50% { fill: var(--color-accent-600); }
+  0%   { fill: var(--color-accent-900); }
+  6%   { fill: var(--color-accent-400); }
+  14%  { fill: var(--color-accent-600); }
+  100% { fill: var(--color-accent-600); }
 }
 @keyframes splashKey {
   0%, 12% { fill: var(--color-accent-400); }
