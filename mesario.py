@@ -1,7 +1,7 @@
 """
-Terminal do Mesário 2026 — poll-worker terminal, driven from Python in
-Pyodide. Mirrors the real documented flow (Manual/Guia Rápido do Mesário,
-TSE "Encerramento da Votação" post-2024 procedure):
+Terminal do Mesário — poll-worker terminal, driven from Python in Pyodide.
+Mirrors the real documented flow (Manual/Guia Rápido do Mesário, TSE
+"Encerramento da Votação" post-2024 procedure):
 
   zerésima (zero-report, 7h) -> registro de mesários (each present poll
   worker's título + CONFIRMA, CORRIGE to finish) -> identificação do
@@ -22,6 +22,8 @@ voter's session without casting a vote.
 from js import document, window
 from pyodide.ffi import create_proxy, to_js
 
+import eleicoes
+
 
 def dispatch(name, detail):
     js_detail = to_js({'detail': detail}, dict_converter=window.Object.fromEntries)
@@ -40,15 +42,10 @@ MENU_OPCOES = [
     {'id': 'audio', 'n': '4', 'label': 'Ativar/desativar áudio'},
 ]
 
-# Same fictional candidates as urna.py's CANDS, listed here only for the
-# zerésima/BU printouts (deliberately not imported, to keep each terminal
-# standalone).
-CANDS_PRESIDENTE = [
-    {'num': '37', 'nome': 'Helena Duarte Ramos', 'partido': 'PRV'},
-    {'num': '48', 'nome': 'Marcos Tavares Albuquerque', 'partido': 'MNB'},
-    {'num': '61', 'nome': 'Joana Sato Ferreira', 'partido': 'PDA'},
-    {'num': '84', 'nome': 'Paulo Henrique Costa', 'partido': 'UCT'},
-]
+# The candidate slate for the zerésima/BU printouts comes from eleicoes.py,
+# the same source the urna reads: the two terminals have to agree on which
+# election is loaded, so the election selector cannot leave one of them
+# printing another year's candidates.
 
 
 def esc(s):
@@ -65,9 +62,12 @@ def fmt_titulo(s):
 
 
 class Mesario:
-    def __init__(self, root, teclado=True):
+    def __init__(self, root, teclado=True, ano=None):
         self.root = root
         self.teclado = teclado
+
+        self.eleicao = eleicoes.get(ano or eleicoes.DEFAULT)
+        self.cands = self.eleicao['cands']
 
         # zeresima -> registro_mesarios -> ident <-> menu -> (encerrar_fila
         # -> encerrar_titulo) -> encerrada; ident -> bio -> ano -> votando
@@ -83,7 +83,7 @@ class Mesario:
 
         # Running section tally, fed by each voter's urna-fim result — the
         # real BU reports these totals once at close of polls, not per voter.
-        self.votos = {c['num']: 0 for c in CANDS_PRESIDENTE}
+        self.votos = {c['num']: 0 for c in self.cands}
         self.votos_branco = 0
         self.votos_nulo = 0
         self.comparecimento = 0
@@ -322,15 +322,15 @@ class Mesario:
 
     # ---- conteúdo dos recibos (Módulo Impressor) ----
     def _linhas_zeresima(self):
-        linhas = ['Seção 0412 · Zona ZZ', 'Nenhum voto ou justificativa', 'registrado nesta urna.', '', 'PRESIDENTE DA REPÚBLICA']
-        for c in CANDS_PRESIDENTE:
+        linhas = [eleicoes.secao_label(), 'Nenhum voto ou justificativa', 'registrado nesta urna.', '', 'PRESIDENTE DA REPÚBLICA']
+        for c in self.cands:
             linhas.append(f'{c["num"]} {c["nome"][:22]} 0')
         linhas += ['Brancos 0', 'Nulos 0']
         return linhas
 
     def _linhas_resumo_zeresima(self):
         return [
-            'Seção 0412 · Zona ZZ',
+            eleicoes.secao_label(),
             'Todos os cargos conferidos com',
             'zero votos e zero justificativas.',
             'Afixar em local visível.',
@@ -338,25 +338,25 @@ class Mesario:
 
     def _linhas_bu(self):
         linhas = [
-            'Seção 0412 · Zona ZZ',
+            eleicoes.secao_label(),
             'PRESIDENTE DA REPÚBLICA',
             f'Comparecimento: {self.comparecimento}',
         ]
-        for c in CANDS_PRESIDENTE:
+        for c in self.cands:
             linhas.append(f'{c["num"]} {c["nome"][:22]} {self.votos[c["num"]]}')
         linhas += [f'Brancos {self.votos_branco}', f'Nulos {self.votos_nulo}']
         return linhas
 
     def _linhas_buj(self):
         return [
-            'Seção 0412 · Zona ZZ',
+            eleicoes.secao_label(),
             'Justificativas de ausência',
             'registradas: 0',
             f'Votações suspensas: {self.suspensoes}',
         ]
 
     def _linhas_bim(self):
-        linhas = ['Seção 0412 · Zona ZZ', 'Mesários registrados:', f'Presidente — {PRESIDENTE_TITULO}']
+        linhas = [eleicoes.secao_label(), 'Mesários registrados:', f'Presidente — {PRESIDENTE_TITULO}']
         for m in self.mesarios_registrados:
             linhas.append(f'{m["nome"][:20]} — {m["titulo"]}')
         return linhas
@@ -378,7 +378,7 @@ class Mesario:
             else:
                 rows = ''.join(
                     f'<div class="tm-zeresima-row"><span>{esc(c["num"])} · {esc(c["nome"])} ({esc(c["partido"])})</span><span>0</span></div>'
-                    for c in CANDS_PRESIDENTE
+                    for c in self.cands
                 )
                 body = (
                     '<div class="tm-body tm-zeresima-body">'
@@ -478,7 +478,7 @@ class Mesario:
             body = (
                 '<div class="tm-body">'
                 f'<span class="tm-nome">{esc(ELEITOR["nome"])}</span>'
-                f'<span class="tm-sub">Título {esc(ELEITOR["titulo"])} · Seção 0412</span>'
+                f'<span class="tm-sub">Título {esc(ELEITOR["titulo"])} · Seção {esc(eleicoes.SECAO["secao"])}</span>'
                 '<span class="tm-badge">APTO A VOTAR</span>'
                 '<div class="tm-bio-row">'
                 '<i class="tm-fingerprint-icon">⚹</i>'
@@ -527,7 +527,8 @@ class Mesario:
         audio_tag = ' · ÁUDIO ATIVO' if self.audio_ativo else ''
         screen_html = (
             '<div class="tm-screen" data-screen-label="Tela do terminal do mesário">'
-            f'<div class="tm-topbar"><span>Zona ZZ · Seção 0412 · Lisboa</span><span>Exterior{esc(audio_tag)}</span></div>'
+            f'<div class="tm-topbar"><span>{esc(eleicoes.secao_label())} · {esc(eleicoes.SECAO["local"])}</span>'
+            f'<span>{esc(self.eleicao["rotulo"])}{esc(audio_tag)}</span></div>'
             f'{body}'
             '</div>'
         )

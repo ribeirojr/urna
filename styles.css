@@ -42,6 +42,31 @@
 
   --shadow-sm: 0 0 0 1px #3f424d;
   --shadow-md: 0 0 0 1px #595d6c, 0 6px 18px rgba(0,0,0,0.55);
+
+  /* The flag backdrop, shared by the splash and the fullscreen urna.
+     Three diagonal bands in the flag's own colours (Pantone 356 / 109 /
+     661) at 60% over the page background, green taking the majority.
+     135deg runs the bands from the top-left down to the bottom-right, so
+     they read as a 45° tilt on screen. */
+  --flag-green: #009739;
+  --flag-yellow: #fedd00;
+  --flag-blue: #012169;
+  --flag-bands: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--flag-green) 60%, var(--color-bg)) 0 56%,
+    color-mix(in srgb, var(--flag-yellow) 60%, var(--color-bg)) 56% 78%,
+    color-mix(in srgb, var(--flag-blue) 60%, var(--color-bg)) 78% 100%
+  );
+  /* A wide, soft vignette: at 60% the yellow band alone leaves light text
+     at ~1.6:1, so the middle is darkened while the bands keep their
+     colour. Layered above --flag-bands, never instead of it. */
+  --flag-veil: radial-gradient(
+    ellipse 90% 58% at 50% 50%,
+    color-mix(in srgb, var(--color-bg) 88%, transparent) 0%,
+    color-mix(in srgb, var(--color-bg) 70%, transparent) 38%,
+    color-mix(in srgb, var(--color-bg) 30%, transparent) 72%,
+    transparent 100%
+  );
 }
 
 html, body { background: var(--color-bg); }
@@ -56,18 +81,63 @@ body {
 a { color: var(--color-accent-300); }
 a:hover { color: var(--color-accent-200); }
 
+/* Three vertical bands in the flag's own colours — Pantone 356 / 109 / 661,
+   the green, yellow and blue — laid over the page background at 60% so they
+   read as a tint behind the urna rather than a flag being flown. Hard stops,
+   no gradient between bands, with a soft seam where they meet. */
 #loading {
   position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-  flex-direction: column; gap: 12px;
+  flex-direction: column; gap: 4px;
   font: 500 13px var(--font-body); color: var(--color-neutral-400);
   letter-spacing: .04em; text-transform: uppercase;
+  background: var(--flag-veil), var(--flag-bands);
 }
-#loading .spinner {
-  width: 28px; height: 28px; border-radius: 50%;
-  border: 3px solid var(--color-neutral-800); border-top-color: var(--color-accent-400);
-  animation: spin 0.8s linear infinite;
+/* Lighter than the page default: this text sits over the flag bands, not
+   over the plain background. */
+.splash-text { margin-top: 14px; color: var(--color-text); }
+.splash-sub {
+  font: 400 10.5px var(--font-body); letter-spacing: .12em;
+  color: var(--color-neutral-300);
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Tiny urna eletrônica standing in for a spinner: the screen warms up and
+   the keypad lights key by key, so the wait reads as the machine booting. */
+.splash-urna { width: 132px; height: auto; }
+.splash-urna .su-case { fill: var(--color-neutral-900); stroke: var(--color-neutral-800); stroke-width: 1; }
+.splash-urna .su-bezel { fill: var(--color-bg); }
+.splash-urna .su-screen { fill: var(--color-accent-900); }
+.splash-urna .su-keys rect { fill: var(--color-neutral-800); }
+.splash-urna .su-branco { fill: var(--color-neutral-400); }
+.splash-urna .su-corrige { fill: oklch(0.72 0.16 60); }
+.splash-urna .su-confirma { fill: oklch(0.68 0.15 150); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .splash-urna .su-screen { animation: splashScreen 2.4s linear infinite; }
+  .splash-urna .su-keys rect { animation: splashKey 2.4s steps(1) infinite; }
+  /* Stagger across the ten number keys so the light walks the keypad. */
+  .splash-urna .su-keys rect:nth-child(1)  { animation-delay: 0s; }
+  .splash-urna .su-keys rect:nth-child(2)  { animation-delay: .12s; }
+  .splash-urna .su-keys rect:nth-child(3)  { animation-delay: .24s; }
+  .splash-urna .su-keys rect:nth-child(4)  { animation-delay: .36s; }
+  .splash-urna .su-keys rect:nth-child(5)  { animation-delay: .48s; }
+  .splash-urna .su-keys rect:nth-child(6)  { animation-delay: .6s; }
+  .splash-urna .su-keys rect:nth-child(7)  { animation-delay: .72s; }
+  .splash-urna .su-keys rect:nth-child(8)  { animation-delay: .84s; }
+  .splash-urna .su-keys rect:nth-child(9)  { animation-delay: .96s; }
+  .splash-urna .su-keys rect:nth-child(10) { animation-delay: 1.08s; }
+}
+/* The screen snaps on almost instantly, like a panel backlight striking,
+   then holds lit for the rest of the cycle instead of breathing in and out. */
+@keyframes splashScreen {
+  0%   { fill: var(--color-accent-900); }
+  6%   { fill: var(--color-accent-400); }
+  14%  { fill: var(--color-accent-600); }
+  100% { fill: var(--color-accent-600); }
+}
+@keyframes splashKey {
+  0%, 12% { fill: var(--color-accent-400); }
+  24%, 100% { fill: var(--color-neutral-800); }
+}
 
 .page {
   max-width: 1180px; margin: 0 auto; padding: 48px 24px 80px;
@@ -371,6 +441,108 @@ a:hover { color: var(--color-accent-200); }
   display: flex; align-items: center; gap: var(--space-6); font-size: 12px;
   color: var(--color-neutral-400); margin-top: 16px; justify-content: center;
 }
+
+/* Fullscreen: the urna column is the fullscreened element, so everything
+   else on the page is already out of view. What remains is to drop the
+   column's own label, fill the black, and center the machine. The scale
+   itself is set on #urna-root from JS — .shell is a fixed-size layout and
+   is scaled rather than reflowed.
+
+   A browser drops an entire selector list when one selector in it is
+   unknown, so the standard and -webkit- forms are kept in separate blocks
+   and must stay that way. Shared declarations live in .fs-on, which the
+   JS toggles on the same element. */
+#urna-col:fullscreen { background: var(--flag-veil), var(--flag-bands); }
+#urna-col:-webkit-full-screen { background: var(--flag-veil), var(--flag-bands); }
+
+#urna-col.fs-on {
+  width: 100%; height: 100%;
+  justify-content: center; align-items: center; gap: 0; padding: 24px 0;
+  /* auto, not hidden: if the machine ever overflows (a long printer tray,
+     a very short window), it must stay reachable rather than have its top
+     — the screen, where the candidate number is — silently clipped off. */
+  overflow: auto;
+}
+#urna-col.fs-on #urna-root { flex: none; }
+#urna-col.fs-on .terminal-label { display: none; }
+
+.fs-help { display: none; }
+/* The help bubble floats in the corner rather than sitting in the column's
+   flow: out of flow it takes no layout height, so the urna gets the whole
+   viewport to scale into instead of being pushed up by a button.
+   Backgrounds here are opaque — these controls sit over the flag bands,
+   and a translucent one let the yellow through at ~3:1 against its text. */
+#urna-col.fs-on .fs-help {
+  position: fixed; right: 22px; bottom: 22px; z-index: 10;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+}
+
+.fs-help-btn {
+  width: 38px; height: 38px; border-radius: 50%; border: 0; cursor: pointer;
+  background: color-mix(in srgb, var(--color-bg) 85%, var(--color-text));
+  color: var(--color-neutral-200);
+  font: 600 17px/1 var(--font-body);
+  box-shadow: 0 4px 14px rgba(0,0,0,.45);
+  transition: background .15s ease, color .15s ease, transform .15s ease;
+}
+.fs-help-btn:hover {
+  background: color-mix(in srgb, var(--color-bg) 68%, var(--color-text));
+  color: var(--color-text); transform: translateY(-1px);
+}
+.fs-help-btn:focus-visible { outline: 2px solid var(--color-accent-400); outline-offset: 3px; }
+
+/* The urna is scaled to fill the viewport, so this panel always opens over
+   it. A ring and a deep shadow separate it from the cabinet underneath
+   instead of letting it blend into the keypad. */
+.fs-help-panel {
+  display: flex; flex-direction: column; gap: 12px;
+  min-width: 236px; padding: 15px 17px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-bg) 96%, var(--color-text));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-text) 18%, transparent),
+              0 18px 44px rgba(0,0,0,.66);
+}
+.fs-help-panel[hidden] { display: none; }
+.fs-help-title {
+  font: 500 10.5px/1 var(--font-body); letter-spacing: .14em; text-transform: uppercase;
+  color: var(--color-neutral-400);
+}
+.fs-help-keys {
+  display: grid; grid-template-columns: auto 1fr; gap: 7px 12px; margin: 0;
+  align-items: baseline;
+}
+.fs-help-keys dt {
+  justify-self: start;
+  padding: 3px 7px; border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-text) 13%, transparent);
+  color: var(--color-neutral-200);
+  font: 600 11px/1.15 var(--font-body);
+}
+.fs-help-keys dd { margin: 0; font-size: 12.5px; color: var(--color-neutral-300); }
+.fs-help-exit {
+  border: 0; border-radius: var(--radius-sm); cursor: pointer; width: 100%;
+  background: color-mix(in srgb, var(--color-text) 13%, transparent);
+  color: var(--color-neutral-200);
+  font: 500 10.5px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase;
+  padding: 9px 12px;
+}
+.fs-help-exit:hover {
+  background: color-mix(in srgb, var(--color-text) 22%, transparent);
+  color: var(--color-text);
+}
+
+.unlock-prompt {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 20px; flex-wrap: wrap;
+  max-width: 680px; padding: 14px 18px;
+  background: var(--color-surface); border-radius: var(--radius-md);
+  border-left: 3px solid var(--color-accent);
+}
+.unlock-prompt.hidden { display: none; }
+.unlock-body { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 260px; }
+.unlock-title { font: 600 14px var(--font-heading); color: var(--color-text); }
+.unlock-text { font-size: 13px; line-height: 1.5; color: var(--color-neutral-300); }
+.unlock-prompt .btn { flex: none; }
 
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
